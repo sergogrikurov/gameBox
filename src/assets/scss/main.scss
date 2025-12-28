@@ -1,0 +1,22 @@
+/*
+чтобы заработал scss нужно
+1. npm install -D sass
+2. vite.config.js
+вставить
+css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `
+          @use "@/assets/scss/variables" as *;
+          @use "@/assets/scss/adaptive-value" as *;
+          @use "@/assets/scss/_functions.scss" as *;
+        `,
+      },
+    },
+  },
+*/
+
+@use "./variables";
+@use "./adaptive-value";
+@use "./base.scss";
+@use "./functions";

@@ -1,0 +1,10 @@
+$maxWidth: 1920;
+$startPoint: 768;
+
+@mixin adaptive-value($property, $startSize, $minSize) {
+  $addSize: $startSize - $minSize;
+  #{$property}: $startSize + px;
+  @media (max-width: #{$startPoint + px}) {
+    #{$property}: calc(#{$minSize + px} + #{$addSize} * ((100vw - 320px) / #{$startPoint - 320}));
+  }
+}

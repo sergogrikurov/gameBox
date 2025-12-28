@@ -1,0 +1,10 @@
+@use "./_variables.scss" as *;
+
+@use "sass:math";
+
+@function rem($target, $context: null) {
+  @if $context == null {
+    $context: $base-size;
+  }
+  @return math.div($target, $context) * 1rem;
+}
