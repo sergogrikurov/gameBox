@@ -94,7 +94,7 @@ onMounted(() => {
     border-radius: rem(6);
     cursor: pointer;
     font-size: rem(24);
-    font-weight: 400;
+    font-weight: 700;
     color: #fff;
     background-color: transparent;
     box-shadow: 0 0 2px 2px rgba(255, 255, 255, 0.6);
