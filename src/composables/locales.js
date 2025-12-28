@@ -8,6 +8,11 @@ export const translations = {
     gameMode: "Выберите режим игры",
     single: "Игрок",
     multi: "Игрока",
+    gamesTitle: "Список игр",
+    singlePlayerGames: {
+      puzzle: "Пазл",
+      count: "Счёт",
+    },
   },
   ka: {
     chooseLanguage: "აირჩიე ენა",
@@ -18,5 +23,10 @@ export const translations = {
     gameMode: "აირჩიეთ თამაშის რეჟიმი",
     single: "მოთამაშე",
     multi: "მოთამაშე",
+    gamesTitle: "Игры",
+    singlePlayerGames: {
+      puzzle: "Пазл",
+      count: "Счёт",
+    },
   },
 };

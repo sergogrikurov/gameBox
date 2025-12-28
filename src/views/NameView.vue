@@ -87,7 +87,8 @@ watch(name, (newName) => {
   }
 
   &__title {
-    color: #4a90e2;
+    //color: #4a90e2;
+    color: yellow;
     font-style: italic;
     @include adaptive-value(font-size, 50, 26);
     @include adaptive-value(margin-bottom, 50, 20);
