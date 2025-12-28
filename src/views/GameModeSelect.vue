@@ -2,10 +2,13 @@
 import { translations } from "@/composables/locales.js";
 import { useLanguage } from "@/composables/useLanguage";
 const { language } = useLanguage();
-import MyButton from "@/components/MyButton.vue";
 
 import { useRouter } from "vue-router";
 const router = useRouter();
+
+function goBack() {
+  router.push("/name");
+}
 
 function goSinglePlayer() {
   router.push("/single-player");
@@ -29,7 +32,9 @@ onMounted(() => {
 <template>
   <div class="game-mode">
     <div class="game-mode__container">
-      <MyButton to="/name" />
+      <button @click="goBack">
+        <img src="@/assets/arrows/back-arrow-game.png" alt="Back-Arrow" />
+      </button>
       <div class="game-mode__wrapper">
         <h2 class="game-mode__title-hi">
           {{ translations[language].hi }} <span>{{ name }}</span>
