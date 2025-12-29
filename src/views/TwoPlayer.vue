@@ -4,6 +4,7 @@ import { translations } from "@/composables/locales.js";
 import { useLanguage } from "@/composables/useLanguage.js";
 import MyButton from "@/components/MyButton.vue";
 import { useRouter } from "vue-router";
+import ticTacToeImg from "@/assets/game/tic-tac-toe.png";
 
 const { language } = useLanguage();
 const router = useRouter();
@@ -14,7 +15,7 @@ const games = ref([
     key: "tic-tac-toe",
     titleKey: "ticTacToe",
     descriptionKey: "ticTacToeDesc",
-    img: "/images/tic-tac-toe.png",
+    img: ticTacToeImg,
   },
 ]);
 
@@ -22,30 +23,61 @@ function startGame(gameKey) {
   router.push(`/two-player/${gameKey}`);
 }
 </script>
-000
+
 <template>
-  <div class="multi-player">
-    <div class="multi-player__container">
+  <div class="player">
+    <div class="player__container">
       <my-button to="/game-mode" />
-      <h2 class="multi-player__title">
-        {{ translations[language].gamesTitle }}
-      </h2>
-      <div class="multi-player__list">
-        <div v-for="game in games" :key="game.id" class="multi-player__game-card">
-          <img :src="game.img" :alt="translations[language].singlePlayerGames[game.key]" />
-          <h2>{{ translations[language].singlePlayerGames[game.key] }}</h2>
-          <p>{{ translations[language].singlePlayerGames[game.descriptionKey] }}</p>
-          <button @click="startGame(game.key)">
-            {{ translations[language].play }}
-          </button>
+      <div class="player__wrapper">
+        <h2 class="player__title">
+          {{ translations[language].gamesTitle }}
+        </h2>
+        <div class="player__list">
+          <div
+            @click="startGame(game.key)"
+            v-for="game in games"
+            :key="game.id"
+            class="player__game-card"
+          >
+            <img :src="game.img" :alt="translations[language].singlePlayerGames[game.key]" />
+          </div>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<style lang="scss" scoped>
-.multi-player {
+<style scoped lang="scss">
+.player {
   @include adaptive-value(padding-top, 50, 20);
+  &__wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  &__title {
+    color: rgb(197, 73, 16);
+    font-weight: 700;
+    font-style: italic;
+    @include adaptive-value(font-size, 50, 20);
+    @include adaptive-value(margin-top, 50, 10);
+    @include adaptive-value(margin-bottom, 50, 10);
+  }
+
+  &__game-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 2px solid #fff;
+    @include adaptive-value(max-width, 730, 290);
+    border-radius: rem(5);
+    padding: rem(5);
+
+    & img {
+      @include adaptive-value(width, 320, 120);
+      @include adaptive-value(height, 320, 120);
+    }
+  }
 }
 </style>
