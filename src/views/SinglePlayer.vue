@@ -3,22 +3,24 @@ import { ref } from "vue";
 import { translations } from "@/composables/locales.js";
 import { useLanguage } from "@/composables/useLanguage.js";
 import MyButton from "@/components/MyButton.vue";
-import ticTacToeImg from "@/assets/game/tic-tac-toe.png";
+import memoryImg from "@/assets/game/memory.png";
+import { useRouter } from "vue-router";
+const router = useRouter();
 
 const { language } = useLanguage();
 
 const games = ref([
   {
     id: 1,
-    key: "tic-tac-toe",
-    titleKey: "ticTacToe",
-    descriptionKey: "ticTacToeDesc",
-    img: ticTacToeImg,
+    key: "memory",
+    titleKey: "memory",
+    descriptionKey: "memoryGameDesc",
+    img: memoryImg,
   },
 ]);
 
-function startGame(gameId) {
-  console.log("Начать игру с id:", gameId);
+function startGame(gameKey) {
+  router.push(`/single-player/${gameKey}`);
 }
 </script>
 
@@ -32,7 +34,7 @@ function startGame(gameId) {
         </h2>
         <div class="player__list">
           <div
-            @click="startGame(game.id)"
+            @click="startGame(game.key)"
             v-for="game in games"
             :key="game.id"
             class="player__game-card"

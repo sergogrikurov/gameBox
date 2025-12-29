@@ -10,9 +10,9 @@ function goBack() {
   router.push("/name");
 }
 
-// function goSinglePlayer() {
-//   router.push("/single-player");
-// }
+function goSinglePlayer() {
+  router.push("/single-player");
+}
 
 function goTwoPlayer() {
   router.push("/two-player");
@@ -41,7 +41,9 @@ onMounted(() => {
         </h2>
         <h3 class="game-mode__title-select">{{ translations[language].gameMode }}</h3>
         <div class="game-mode__options">
-          <button class="game-mode__btn">1 {{ translations[language].single }}</button>
+          <button class="game-mode__btn" @click="goSinglePlayer">
+            1 {{ translations[language].single }}
+          </button>
           <button class="game-mode__btn" @click="goTwoPlayer">
             2 {{ translations[language].multi }}
           </button>
