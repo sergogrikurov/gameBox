@@ -13,6 +13,8 @@ export const translations = {
       puzzle: "Пазл",
       count: "Счёт",
     },
+    yourMove: "Твой ход",
+    draw: "Ничья",
   },
   ka: {
     chooseLanguage: "აირჩიე ენა",
@@ -28,5 +30,7 @@ export const translations = {
       puzzle: "Пазл",
       count: "Счёт",
     },
+    yourMove: "შენი სვლა",
+    draw: "ფრე",
   },
 };

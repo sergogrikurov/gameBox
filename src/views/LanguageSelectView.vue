@@ -35,6 +35,7 @@ function selectKa() {
 
 <style lang="scss" scoped>
 .flags {
+  @include adaptive-value(padding-top, 50, 20);
   display: grid;
   place-items: center;
 
@@ -52,8 +53,8 @@ function selectKa() {
         box-shadow: 0px 0px 7px 7px gray;
       }
       &:active {
-        transform: translateY(4px); // как будто нажали
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); // тень уменьшается
+        transform: translateY(4px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
       }
     }
 

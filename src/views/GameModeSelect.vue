@@ -55,6 +55,7 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .game-mode {
+  @include adaptive-value(padding-top, 50, 20);
   background-color: #000;
   overflow: hidden;
   &__wrapper {

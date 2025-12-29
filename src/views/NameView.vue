@@ -49,11 +49,11 @@ watch(name, (newName) => {
 
 <style lang="scss" scoped>
 .enter-name {
+  @include adaptive-value(padding-top, 50, 20);
   &__wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    @include adaptive-value(margin-top, 50, 20);
   }
   &__btn {
     display: flex;
@@ -91,6 +91,7 @@ watch(name, (newName) => {
     color: yellow;
     font-style: italic;
     @include adaptive-value(font-size, 50, 26);
+    @include adaptive-value(margin-top, 50, 20);
     @include adaptive-value(margin-bottom, 50, 20);
   }
 
