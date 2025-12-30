@@ -15,6 +15,8 @@ export const translations = {
     },
     yourMove: "Твой ход",
     draw: "Ничья",
+    nameHint: "Сначала введи имя 🙂",
+    nameHint2: "(2-12 букв или цифр)",
   },
   ka: {
     chooseLanguage: "აირჩიე ენა",
@@ -32,5 +34,7 @@ export const translations = {
     },
     yourMove: "შენი სვლა",
     draw: "ფრე",
+    nameHint: "ჯერ შეიყვანე სახელი 🙂",
+    nameHint2: "(2–12 ასო ან ციფრი)",
   },
 };

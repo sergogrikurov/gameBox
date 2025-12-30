@@ -1,46 +1,89 @@
 <script setup>
+import { ref, computed, watch, onMounted } from "vue";
 import { translations } from "@/composables/locales.js";
 import { useLanguage } from "@/composables/useLanguage";
-const { language } = useLanguage();
 import MyButton from "@/components/MyButton.vue";
 
-import { ref, computed, watch, onMounted } from "vue";
-const name = ref("");
-const isNameValid = computed(() => name.value.length >= 2);
+const { language } = useLanguage();
 
+// ограничения имени
+const MIN_LENGTH = 2;
+const MAX_LENGTH = 12;
+
+// имя игрока
+const name = ref("");
+
+// очистка и защита ввода
+const sanitizeName = (value) => {
+  return value
+    .replace(/[<>]/g, "") // защита от HTML
+    .replace(/[^a-zA-Zа-яА-Я0-9\u10A0-\u10FF ]/g, "") // латиница, кириллица, грузинский, цифры
+    .replace(/\s{2,}/g, " "); // убираем двойные пробелы
+};
+
+// проверка валидности имени
+const isNameValid = computed(() => {
+  return name.value.length >= MIN_LENGTH && name.value.length <= MAX_LENGTH;
+});
+
+// загрузка имени из localStorage
 onMounted(() => {
   const savedName = localStorage.getItem("playerName");
   if (savedName) {
-    name.value = savedName;
+    name.value = sanitizeName(savedName);
   }
 });
 
-// сохраняем имя при изменении
+// слежение за вводом и сохранение
 watch(name, (newName) => {
-  if (isNameValid.value) {
-    localStorage.setItem("playerName", newName);
+  const cleaned = sanitizeName(newName);
+
+  if (cleaned !== newName) {
+    name.value = cleaned;
+    return;
   }
+
+  if (isNameValid.value) {
+    localStorage.setItem("playerName", cleaned);
+  }
+});
+
+const showHint = computed(() => {
+  return name.value.length < MIN_LENGTH;
 });
 </script>
 
 <template>
   <div class="enter-name">
     <div class="enter-name__container">
+      <!-- кнопка назад -->
       <MyButton />
+
       <div class="enter-name__wrapper">
-        <h2 class="enter-name__title">{{ translations[language].enterName }}</h2>
+        <h2 class="enter-name__title">
+          {{ translations[language].enterName }}
+        </h2>
+
         <input
           v-model.trim="name"
           class="enter-name__input"
           type="text"
           :placeholder="translations[language].myNameIs"
+          :maxlength="MAX_LENGTH"
         />
 
+        <!-- Подсказка -->
+        <div v-if="showHint" class="enter-name__hint">
+          <p>{{ translations[language].nameHint }}</p>
+          <span>{{ translations[language].nameHint2 }}</span>
+        </div>
+
+        <!-- Кнопка Play -->
         <MyButton
+          v-else
           to="/game-mode"
           :text="translations[language].play"
           btnClass="enter-name__btn"
-          :disabled="!isNameValid"
         />
       </div>
     </div>
@@ -50,11 +93,56 @@ watch(name, (newName) => {
 <style lang="scss" scoped>
 .enter-name {
   @include adaptive-value(padding-top, 50, 20);
+
   &__wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
   }
+
+  &__title {
+    color: yellow;
+    font-style: italic;
+    @include adaptive-value(font-size, 50, 26);
+    @include adaptive-value(margin-top, 50, 20);
+    @include adaptive-value(margin-bottom, 30, 16);
+  }
+
+  &__input {
+    @include adaptive-value(width, 250, 200);
+    padding: 12px 16px;
+    font-size: 18px;
+    border: 2px solid #4caf50;
+    border-radius: 12px;
+    outline: none;
+    transition: 0.3s;
+
+    &:focus {
+      border-color: #ff9800;
+      box-shadow: 0 0 8px rgba(255, 152, 0, 0.5);
+    }
+
+    &::placeholder {
+      color: #999;
+      font-style: italic;
+    }
+  }
+
+  &__hint {
+    display: grid;
+    place-items: center;
+    margin-top: 20px;
+    padding: 10px 16px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border-radius: 12px;
+    font-size: 20px;
+    text-align: center;
+    line-height: 1.4;
+    max-width: 270px;
+    height: rem(80);
+  }
+
   &__btn {
     display: flex;
     justify-content: center;
@@ -83,33 +171,6 @@ watch(name, (newName) => {
     &:disabled {
       opacity: 0.5;
       cursor: not-allowed;
-    }
-  }
-
-  &__title {
-    //color: #4a90e2;
-    color: yellow;
-    font-style: italic;
-    @include adaptive-value(font-size, 50, 26);
-    @include adaptive-value(margin-top, 50, 20);
-    @include adaptive-value(margin-bottom, 50, 20);
-  }
-
-  &__input {
-    @include adaptive-value(width, 250, 200);
-    padding: 12px 16px;
-    font-size: 18px;
-    border: 2px solid #4caf50;
-    border-radius: 12px;
-    outline: none;
-    transition: 0.3s;
-    &:focus {
-      border-color: #ff9800;
-      box-shadow: 0 0 8px rgba(255, 152, 0, 0.5);
-    }
-    &::placeholder {
-      color: #999;
-      font-style: italic;
     }
   }
 }
