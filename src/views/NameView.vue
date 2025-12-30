@@ -56,14 +56,11 @@ const showHint = computed(() => {
 <template>
   <div class="enter-name">
     <div class="enter-name__container">
-      <!-- кнопка назад -->
       <MyButton />
-
       <div class="enter-name__wrapper">
         <h2 class="enter-name__title">
           {{ translations[language].enterName }}
         </h2>
-
         <input
           v-model.trim="name"
           class="enter-name__input"
@@ -71,14 +68,10 @@ const showHint = computed(() => {
           :placeholder="translations[language].myNameIs"
           :maxlength="MAX_LENGTH"
         />
-
-        <!-- Подсказка -->
         <div v-if="showHint" class="enter-name__hint">
           <p>{{ translations[language].nameHint }}</p>
           <span>{{ translations[language].nameHint2 }}</span>
         </div>
-
-        <!-- Кнопка Play -->
         <MyButton
           v-else
           to="/game-mode"
@@ -131,15 +124,15 @@ const showHint = computed(() => {
   &__hint {
     display: grid;
     place-items: center;
-    margin-top: 20px;
-    padding: 10px 16px;
+    margin-top: rem(20);
+    padding: rem(10) rem(16);
     background: rgba(0, 0, 0, 0.6);
     color: #fff;
-    border-radius: 12px;
-    font-size: 20px;
+    border-radius: rem(12);
+    font-size: rem(20);
     text-align: center;
     line-height: 1.4;
-    max-width: 270px;
+    max-width: rem(270);
     height: rem(80);
   }
 

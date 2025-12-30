@@ -1,6 +1,10 @@
 <script setup>
 import MyButton from "@/components/MyButton.vue";
+import { translations } from "@/composables/locales";
+import { useLanguage } from "@/composables/useLanguage";
 import { ref, computed } from "vue";
+
+const { language } = useLanguage();
 
 // Для простоты: буквы A, B, C, D (2 карточки каждой)
 const cards = ref([
@@ -88,11 +92,18 @@ function resetGame() {
         </div>
 
         <div class="memory__stats">
-          <p>Ходов: {{ moves }}</p>
-          <p v-if="gameOver">Поздравляем! Все пары найдены 🎉</p>
+          <p class="memory__stats_moves">
+            {{ translations[language].moves }}:
+            <span>{{ moves }}</span>
+          </p>
+          <p class="memory__stats_congratulations" v-if="gameOver">
+            {{ translations[language].congratulations }} 🎉
+          </p>
         </div>
 
-        <button class="memory__reset-btn" @click="resetGame">Сбросить игру</button>
+        <button class="memory__reset-btn" @click="resetGame">
+          {{ translations[language].resetGame }}
+        </button>
       </div>
     </div>
   </div>
@@ -118,7 +129,7 @@ function resetGame() {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 10px;
+    gap: rem(10);
     @include adaptive-value(max-width, 500, 290);
   }
 
@@ -149,21 +160,53 @@ function resetGame() {
   &__stats {
     margin-top: rem(20);
     font-weight: bold;
+    &_moves {
+      font-size: rem(24);
+      color: #c0392b;
+      text-align: center;
+      & span {
+        color: blue;
+      }
+    }
+
+    &_congratulations {
+      text-align: center;
+      @include adaptive-value(font-size, 28, 20);
+      @include adaptive-value(margin-top, 20, 10);
+      @include adaptive-value(margin-bottom, 20, 0);
+      color: palevioletred;
+      line-height: 1.4;
+    }
   }
 
   &__reset-btn {
-    margin-top: rem(15);
-    padding: rem(10) rem(20);
-    background-color: #e74c3c;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: rem(49);
+    font-size: rem(20);
+    background-color: #4caf50;
+    border-radius: rem(12);
+    font-style: italic;
     color: #fff;
-    border: none;
-    border-radius: rem(6);
-    cursor: pointer;
-    font-weight: bold;
-    transition: background-color 0.2s;
+    @include adaptive-value(width, 250, 200);
+    @include adaptive-value(margin-top, 20, 10);
 
-    &:hover {
-      background-color: #c0392b;
+    &:not(:disabled):hover {
+      background-color: #45a049;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    &:not(:disabled):active {
+      background-color: #3e8e41;
+      transform: translateY(0);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
   }
 }

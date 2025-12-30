@@ -106,19 +106,24 @@ function resetGame() {
 
         <div class="tic-tac-toe__score">
           <p class="tic-tac-toe__score-player">
-            <span class="tic-tac-toe__score-player_name">{{ playerName }}</span>
-            <span class="tic-tac-toe__score-player-symbol">score (X):</span>
+            <span class="tic-tac-toe__score-player_name-x">{{ playerName }}</span>
+            <span class="tic-tac-toe__score-player_symbol-x">X</span>
             <span class="tic-tac-toe__score-player_score">{{ score.X }}</span>
           </p>
 
           <p class="tic-tac-toe__score-player">
-            <span class="tic-tac-toe__score-player_name">{{ otherPlayer }}</span>
-            <span class="tic-tac-toe__score-player-symbol">(O):</span>
+            <span class="tic-tac-toe__score-player_name-0">{{ otherPlayer }}</span>
+            <span class="tic-tac-toe__score-player_symbol-0">0</span>
             <span class="tic-tac-toe__score-player_score">{{ score.O }}</span>
           </p>
-          <p class="tic-tac-toe__score-draw">{{ translations[language].draw }}: {{ score.draw }}</p>
+          <p class="tic-tac-toe__score-draw">
+            {{ translations[language].draw }}:
+            <span>{{ score.draw }}</span>
+          </p>
         </div>
-        <button class="tic-tac-toe__reset-btn" @click="resetGame">Сбросить игру</button>
+        <button class="tic-tac-toe__reset-btn" @click="resetGame">
+          {{ translations[language].resetGame }}
+        </button>
       </div>
     </div>
   </div>
@@ -191,30 +196,84 @@ function resetGame() {
   }
 
   &__score {
+    @include adaptive-value(font-size, 30, 20);
+    & > *:not(:last-child) {
+      margin-bottom: rem(20);
+    }
   }
 
   &__score-player {
-    &_name {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    @include adaptive-value(width, 310, 200);
+    &_name-x {
+      width: rem(120);
+      color: red;
+    }
+
+    &_name-0 {
+      width: rem(120);
+      color: blue;
+    }
+
+    &_symbol-x {
+      color: #3498db;
+    }
+
+    &_symbol-0 {
+      color: #e74c3c;
     }
 
     &_score {
+      color: green;
     }
   }
 
-  &__score-player-symbol {
-  }
-
   &__score-draw {
+    color: palevioletred;
+    & span {
+      color: green;
+    }
   }
 
   &__reset-btn {
+    margin-top: rem(20);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: rem(49);
+    font-size: rem(20);
+    background-color: #4caf50;
+    border-radius: rem(12);
+    font-style: italic;
+    color: #fff;
+    @include adaptive-value(width, 250, 200);
+    @include adaptive-value(margin-top, 20, 10);
+
+    &:not(:disabled):hover {
+      background-color: #45a049;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    &:not(:disabled):active {
+      background-color: #3e8e41;
+      transform: translateY(0);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   }
 }
 .X {
-  color: #3498db; // крестик синий
+  color: #3498db;
 }
 
 .O {
-  color: #e74c3c; // нолик красный
+  color: #e74c3c;
 }
 </style>

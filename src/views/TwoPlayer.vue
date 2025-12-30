@@ -73,6 +73,7 @@ function startGame(gameKey) {
     @include adaptive-value(max-width, 730, 290);
     border-radius: rem(5);
     padding: rem(5);
+    cursor: pointer;
 
     & img {
       @include adaptive-value(width, 320, 120);

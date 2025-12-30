@@ -17,6 +17,9 @@ export const translations = {
     draw: "Ничья",
     nameHint: "Сначала введи имя 🙂",
     nameHint2: "(2-12 букв или цифр)",
+    resetGame: "Сбросить игру",
+    moves: "Ходов",
+    congratulations: "Поздравляем! Все пары найдены",
   },
   ka: {
     chooseLanguage: "აირჩიე ენა",
@@ -36,5 +39,8 @@ export const translations = {
     draw: "ფრე",
     nameHint: "ჯერ შეიყვანე სახელი 🙂",
     nameHint2: "(2–12 ასო ან ციფრი)",
+    resetGame: "gadatvirtva",
+    moves: "svlebi",
+    congratulations: "gilocavt! yvela wyvili napovnia",
   },
 };
