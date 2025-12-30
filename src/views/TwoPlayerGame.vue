@@ -6,7 +6,7 @@ const route = useRoute();
 
 <template>
   <div class="two-plaer-game">
-    <TicTacToe v-if="route.params.game === 'tic-tac-toe'" />
+    <TicTacToe v-if="route.params.game === 'TicTacToe'" />
   </div>
 </template>
 

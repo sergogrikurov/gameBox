@@ -12,7 +12,7 @@ const router = useRouter();
 const games = ref([
   {
     id: 1,
-    key: "tic-tac-toe",
+    key: "TicTacToe",
     titleKey: "ticTacToe",
     descriptionKey: "ticTacToeDesc",
     img: ticTacToeImg,
@@ -39,7 +39,7 @@ function startGame(gameKey) {
             :key="game.id"
             class="player__game-card"
           >
-            <img :src="game.img" :alt="translations[language].singlePlayerGames[game.key]" />
+            <img :src="game.img" :alt="translations[language].multiPlayerGames[game.key]" />
           </div>
         </div>
       </div>
