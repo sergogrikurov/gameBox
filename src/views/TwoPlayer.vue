@@ -19,8 +19,8 @@ const games = ref([
   },
 ]);
 
-function startGame(gameKey) {
-  router.push(`/two-player/${gameKey}`);
+function goToRoom(gameKey) {
+  router.push(`/two-player-room/${gameKey}`);
 }
 </script>
 
@@ -34,7 +34,7 @@ function startGame(gameKey) {
         </h2>
         <div class="player__list">
           <div
-            @click="startGame(game.key)"
+            @click="goToRoom(game.key)"
             v-for="game in games"
             :key="game.id"
             class="player__game-card"

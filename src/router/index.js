@@ -6,6 +6,7 @@ import SinglePlayer from "@/views/SinglePlayer.vue";
 import TwoPlayer from "@/views/TwoPlayer.vue";
 import TwoPlayerGame from "@/views/TwoPlayerGame.vue";
 import SinglePlayerGame from "@/views/SinglePlayerGame.vue";
+import TwoPlayerRoomView from "@/views/TwoPlayerRoomView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -41,11 +42,19 @@ const router = createRouter({
       meta: { title: "Two-Player" },
     },
     {
+      path: "/two-player-room/:game",
+      name: "twoPlayerRoom",
+      component: TwoPlayerRoomView,
+      meta: {
+        titleKey: "twoPlayerRoom",
+      },
+    },
+    {
       path: "/two-player/:game",
       name: "twoPlayerGame",
       component: TwoPlayerGame,
       meta: {
-        titleKey: "twoPlayerGameTitle",
+        titleKey: "twoPlayerGame",
       },
     },
     {
@@ -53,7 +62,7 @@ const router = createRouter({
       name: "singlePlayerGame",
       component: SinglePlayerGame,
       meta: {
-        titleKey: "singlePlayerGameTitle",
+        titleKey: "singlePlayerGame",
       },
     },
   ],
