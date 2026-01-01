@@ -75,7 +75,7 @@ function resetGame() {
 
 <template>
   <div class="memory">
-    <my-button to="/two-player" />
+    <my-button to="/single-player-game-list" />
     <div class="memory__container">
       <div class="memory__wrapper">
         <h2 class="memory__title">Memory</h2>

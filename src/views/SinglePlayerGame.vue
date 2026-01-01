@@ -1,18 +1,18 @@
 <script setup>
-import { useRoute } from "vue-router";
-import MemoryGame from "@/views/games/single/MemoryGame.vue";
+import { useRoute, useRouter } from "vue-router";
 
 const route = useRoute();
-</script>
+const router = useRouter();
 
-<template>
-  <div class="single-player-game">
-    <MemoryGame v-if="route.params.game === 'memory'" />
-  </div>
-</template>
+const gameRoutes = {
+  memory: "singleMemory",
+};
 
-<style lang="scss" scoped>
-.single-player-game {
-  @include adaptive-value(padding-top, 50, 0);
+const game = route.params.game;
+
+if (gameRoutes[game]) {
+  router.replace({ name: gameRoutes[game] });
+} else {
+  router.replace("/single-player-game-list");
 }
-</style>
+</script>

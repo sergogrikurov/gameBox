@@ -11,11 +11,11 @@ function goBack() {
 }
 
 function goSinglePlayer() {
-  router.push("/single-player");
+  router.push("/single-player-game-list");
 }
 
 function goTwoPlayer() {
-  router.push("/two-player");
+  router.push("/two-player-game-list");
 }
 
 import { ref, onMounted } from "vue";

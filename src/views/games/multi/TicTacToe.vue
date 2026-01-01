@@ -1,279 +1,252 @@
 <script setup>
-import MyButton from "@/components/MyButton.vue";
-import { translations } from "@/composables/locales.js";
-import { useLanguage } from "@/composables/useLanguage";
-const { language } = useLanguage();
-import { ref, computed } from "vue";
+import { ref, onMounted, computed } from "vue";
+import { useRoute } from "vue-router";
+import { db } from "@/firebase/firebase.js";
+import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
 
-// Имя игрока из localStorage
-const playerName = localStorage.getItem("playerName") || "Игрок";
+const route = useRoute();
+const roomId = route.params.roomId;
+const playerName = localStorage.getItem("playerName") || prompt("Введите ваше имя");
 
-// Второй игрок — условно "Компьютер" или другой игрок
-const otherPlayer = "Противник";
-
-// Игровое поле 3x3
+// Состояние комнаты
 const board = ref(Array(9).fill(""));
-
-// Текущий игрок: 'X' = playerName, 'O' = otherPlayer
 const currentPlayer = ref("X");
-
-// Счёт
-const score = ref({ X: 0, O: 0, draw: 0 });
-
-// Результат игры: null = игра продолжается
 const result = ref(null);
+const roomData = ref({
+  player1: "",
+  player2: "",
+  wins1: 0,
+  wins2: 0,
+  totalGames: 0,
+  status: "waiting",
+});
 
-// Чей сейчас ход
-const currentPlayerName = computed(() => (currentPlayer.value === "X" ? playerName : otherPlayer));
+// Вычисляемый символ для этого игрока
+const mySymbol = computed(() => {
+  if (playerName === roomData.value.player1) return "X";
+  if (playerName === roomData.value.player2) return "O";
+  return "";
+});
 
-// Сделать ход
-function makeMove(index) {
-  if (board.value[index] || result.value) return; // занято или игра окончена
+// Имя текущего игрока, чей ход
+const currentPlayerName = computed(() => {
+  if (!roomData.value.player1 || !roomData.value.player2) return "";
+  return currentPlayer.value === "X" ? roomData.value.player1 : roomData.value.player2;
+});
 
-  board.value[index] = currentPlayer.value;
+const winnerName = computed(() => {
+  if (result.value === "X") return roomData.value.player1;
+  if (result.value === "O") return roomData.value.player2;
+  return "";
+});
 
-  const winner = checkWinner();
-  if (winner) {
-    if (winner === "draw") score.value.draw += 1;
-    else score.value[winner] += 1;
-    result.value = winner;
-  } else {
-    // смена игрока
-    currentPlayer.value = currentPlayer.value === "X" ? "O" : "X";
-  }
-}
+// Классы для клеток
+const cellClass = (cell) => (cell === "X" ? "x" : cell === "O" ? "o" : "");
 
 // Проверка победителя
-function checkWinner() {
+function checkWinner(b) {
   const lines = [
     [0, 1, 2],
     [3, 4, 5],
-    [6, 7, 8], // горизонтали
+    [6, 7, 8],
     [0, 3, 6],
     [1, 4, 7],
-    [2, 5, 8], // вертикали
+    [2, 5, 8],
     [0, 4, 8],
-    [2, 4, 6], // диагонали
+    [2, 4, 6],
   ];
-
-  for (const [a, b, c] of lines) {
-    if (board.value[a] && board.value[a] === board.value[b] && board.value[a] === board.value[c]) {
-      return board.value[a]; // 'X' или 'O'
-    }
+  for (let [a, bIndex, c] of lines) {
+    if (b[a] && b[a] === b[bIndex] && b[a] === b[c]) return b[a];
   }
-
-  if (board.value.every((cell) => cell)) return "draw";
-
+  if (b.every((cell) => cell)) return "draw";
   return null;
 }
 
-// Сбросить игру
-function resetGame() {
-  board.value = Array(9).fill("");
-  result.value = null;
-  currentPlayer.value = "X";
+// Сделать ход
+async function makeMove(index) {
+  if (
+    !mySymbol.value ||
+    board.value[index] ||
+    result.value ||
+    mySymbol.value !== currentPlayer.value
+  )
+    return;
+
+  board.value[index] = mySymbol.value;
+  const nextPlayer = mySymbol.value === "X" ? "O" : "X";
+  const winner = checkWinner(board.value);
+
+  const roomRef = doc(db, "rooms", roomId);
+
+  const updates = {
+    board: board.value,
+    currentPlayer: nextPlayer,
+    result: winner,
+  };
+
+  // ✅ если есть победитель — сразу обновляем счёт
+  if (winner === "X") {
+    updates.wins1 = roomData.value.wins1 + 1;
+    updates.totalGames = roomData.value.totalGames + 1;
+  } else if (winner === "O") {
+    updates.wins2 = roomData.value.wins2 + 1;
+    updates.totalGames = roomData.value.totalGames + 1;
+  } else if (winner === "draw") {
+    updates.totalGames = roomData.value.totalGames + 1;
+  }
+
+  await updateDoc(roomRef, updates);
 }
+
+// Сброс игры
+async function resetGame() {
+  const roomRef = doc(db, "rooms", roomId);
+
+  // обновляем счёт
+  let newWins1 = roomData.value.wins1;
+  let newWins2 = roomData.value.wins2;
+  if (result.value === "X") newWins1++;
+  if (result.value === "O") newWins2++;
+  const totalGames = roomData.value.totalGames + (result.value ? 1 : 0);
+
+  await updateDoc(roomRef, {
+    board: Array(9).fill(""),
+    currentPlayer: "X",
+    result: null,
+    wins1: newWins1,
+    wins2: newWins2,
+    totalGames: totalGames,
+  });
+}
+
+// Подписка на комнату
+onMounted(async () => {
+  const roomRef = doc(db, "rooms", roomId);
+  const snap = await getDoc(roomRef);
+  if (!snap.exists()) {
+    console.error("Room not found");
+    return;
+  }
+
+  const data = snap.data();
+  roomData.value.player1 = data.player1;
+  roomData.value.player2 = data.player2 || "";
+  roomData.value.wins1 = data.wins1 || 0;
+  roomData.value.wins2 = data.wins2 || 0;
+  roomData.value.totalGames = data.totalGames || 0;
+  roomData.value.status = data.status || "waiting";
+
+  onSnapshot(roomRef, (docSnap) => {
+    if (!docSnap.exists()) return;
+    const data = docSnap.data();
+    board.value = data.board;
+    currentPlayer.value = data.currentPlayer;
+    result.value = data.result;
+    roomData.value.player1 = data.player1;
+    roomData.value.player2 = data.player2 || "";
+    roomData.value.wins1 = data.wins1 || 0;
+    roomData.value.wins2 = data.wins2 || 0;
+    roomData.value.totalGames = data.totalGames || 0;
+    roomData.value.status = data.status || "waiting";
+  });
+});
 </script>
 
 <template>
-  <div class="tic-tac-toe">
-    <my-button to="/two-player" />
-    <div class="tic-tac-toe__container">
-      <div class="tic-tac-toe__wrapper">
-        <h2 class="tic-tac-toe__title">Tic-Tac-Toe</h2>
-        <p class="tic-tac-toe__move" v-if="!result">
-          {{ translations[language].yourMove }}: <span>{{ currentPlayerName }}</span>
-        </p>
-        <p v-else>
-          <span class="tic-tac-toe__draw" v-if="result === 'draw'"
-            >{{ translations[language].draw }}!</span
-          >
-          <span class="tic-tac-toe__win" v-else
-            ><span>{{ result === "X" ? playerName : otherPlayer }}</span> победил!</span
-          >
-        </p>
-        <div class="tic-tac-toe__board">
-          <div
-            v-for="(cell, index) in board"
-            :key="index"
-            class="tic-tac-toe__board_cell"
-            :class="cell"
-            @click="makeMove(index)"
-          >
-            {{ cell }}
-          </div>
-        </div>
+  <div class="game-container">
+    <h2>Tic-Tac-Toe</h2>
 
-        <div class="tic-tac-toe__score">
-          <p class="tic-tac-toe__score-player">
-            <span class="tic-tac-toe__score-player_name-x">{{ playerName }}</span>
-            <span class="tic-tac-toe__score-player_symbol-x">X</span>
-            <span class="tic-tac-toe__score-player_score">{{ score.X }}</span>
-          </p>
+    <!-- Имя игрока вместо "Ты" -->
+    <p>{{ playerName }} ({{ mySymbol }}):</p>
 
-          <p class="tic-tac-toe__score-player">
-            <span class="tic-tac-toe__score-player_name-0">{{ otherPlayer }}</span>
-            <span class="tic-tac-toe__score-player_symbol-0">0</span>
-            <span class="tic-tac-toe__score-player_score">{{ score.O }}</span>
-          </p>
-          <p class="tic-tac-toe__score-draw">
-            {{ translations[language].draw }}:
-            <span>{{ score.draw }}</span>
-          </p>
-        </div>
-        <button class="tic-tac-toe__reset-btn" @click="resetGame">
-          {{ translations[language].resetGame }}
-        </button>
+    <!-- Ход текущего игрока -->
+    <p v-if="!result && roomData.player2">Ход: {{ currentPlayerName }}</p>
+    <p v-else-if="!roomData.player2">Ждём второго игрока...</p>
+
+    <!-- Результат игры -->
+    <p v-else>
+      Результат:
+      <span v-if="result === 'draw'">Ничья</span>
+      <span v-else>{{ winnerName }} победил</span>
+    </p>
+
+    <!-- Счёт -->
+    <div class="scoreboard">
+      <p>{{ roomData.player1 }}: {{ roomData.wins1 }}</p>
+      <p>{{ roomData.player2 || "Ждём второго игрока..." }}: {{ roomData.wins2 }}</p>
+      <p>Общий счёт партий: {{ roomData.totalGames }}</p>
+    </div>
+
+    <!-- Игровое поле -->
+    <div class="board">
+      <div
+        v-for="(cell, index) in board"
+        :key="index"
+        class="cell"
+        :class="cellClass(cell)"
+        @click="makeMove(index)"
+      >
+        {{ cell }}
       </div>
     </div>
+
+    <!-- Кнопка сброса -->
+    <button @click="resetGame" :disabled="!result">Reset Game</button>
   </div>
 </template>
 
-<style lang="scss" scoped>
-.tic-tac-toe {
-  &__wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  &__title {
-    color: green;
-    font-weight: 700;
-    @include adaptive-value(font-size, 40, 20);
-    @include adaptive-value(margin-top, 50, 10);
-    @include adaptive-value(margin-bottom, 50, 10);
-  }
-
-  &__move {
-    color: rgb(179, 8, 179);
-    @include adaptive-value(font-size, 30, 18);
-    & span {
-      color: red;
-    }
-  }
-
-  &__draw {
-    font-weight: 700;
-    @include adaptive-value(font-size, 30, 18);
-    color: #3498db;
-  }
-
-  &__win {
-    color: rgb(179, 8, 179);
-    @include adaptive-value(font-size, 30, 18);
-    & span {
-      color: red;
-    }
-  }
-
-  &__board {
-    display: flex;
-    flex-wrap: wrap;
-    @include adaptive-value(width, 330, 220);
-    margin: rem(20) auto;
-    @include adaptive-value(margin-top, 20, 10);
-    @include adaptive-value(margin-bottom, 20, 10);
-    gap: rem(10);
-
-    &_cell {
-      flex: 1 0 30%;
-      aspect-ratio: 1 / 1;
-      background-color: #f0f0f0;
-      border: 2px solid #333;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: rem(36);
-      font-weight: bold;
-      cursor: pointer;
-      transition: background-color 0.2s, transform 0.1s;
-
-      &:hover {
-        background-color: #e0e0e0;
-        transform: scale(1.05);
-      }
-    }
-  }
-
-  &__score {
-    @include adaptive-value(font-size, 30, 20);
-    & > *:not(:last-child) {
-      margin-bottom: rem(20);
-    }
-  }
-
-  &__score-player {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    @include adaptive-value(width, 310, 200);
-    &_name-x {
-      width: rem(120);
-      color: red;
-    }
-
-    &_name-0 {
-      width: rem(120);
-      color: blue;
-    }
-
-    &_symbol-x {
-      color: #3498db;
-    }
-
-    &_symbol-0 {
-      color: #e74c3c;
-    }
-
-    &_score {
-      color: green;
-    }
-  }
-
-  &__score-draw {
-    color: palevioletred;
-    & span {
-      color: green;
-    }
-  }
-
-  &__reset-btn {
-    margin-top: rem(20);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: rem(49);
-    font-size: rem(20);
-    background-color: #4caf50;
-    border-radius: rem(12);
-    font-style: italic;
-    color: #fff;
-    @include adaptive-value(width, 250, 200);
-    @include adaptive-value(margin-top, 20, 10);
-
-    &:not(:disabled):hover {
-      background-color: #45a049;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.25);
-    }
-
-    &:not(:disabled):active {
-      background-color: #3e8e41;
-      transform: translateY(0);
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  }
-}
-.X {
-  color: #3498db;
+<style scoped>
+.game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
 }
 
-.O {
-  color: #e74c3c;
+.scoreboard {
+  margin-bottom: 10px;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 80px);
+  grid-template-rows: repeat(3, 80px);
+  gap: 5px;
+  margin-top: 20px;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f0f0;
+  font-size: 32px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.cell:hover {
+  background: #ddd;
+}
+
+/* классы для символов */
+.cell.x {
+  color: red; /* стилизуй как хочешь */
+}
+
+.cell.o {
+  color: blue;
+}
+
+button {
+  margin-top: 20px;
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>
