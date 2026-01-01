@@ -4,7 +4,6 @@ import NameView from "@/views/NameView.vue";
 import GameMode from "@/views/GameModeSelect.vue";
 import SinglePlayer from "@/views/SinglePlayer.vue";
 import TwoPlayer from "@/views/TwoPlayer.vue";
-import TwoPlayerGame from "@/views/TwoPlayerGame.vue";
 import SinglePlayerGame from "@/views/SinglePlayerGame.vue";
 import TwoPlayerRoomView from "@/views/TwoPlayerRoomView.vue";
 
@@ -50,13 +49,14 @@ const router = createRouter({
       },
     },
     {
-      path: "/two-player/:game",
+      path: "/two-player-game/:roomId",
       name: "twoPlayerGame",
-      component: TwoPlayerGame,
+      component: () => import("@/views/TwoPlayerGameView.vue"),
       meta: {
         titleKey: "twoPlayerGame",
       },
     },
+
     {
       path: "/single-player/:game",
       name: "singlePlayerGame",
