@@ -65,6 +65,12 @@ function goToRoom(gameKey) {
     @include adaptive-value(margin-bottom, 50, 10);
   }
 
+  &__list {
+    & > *:not(:last-child) {
+      margin-bottom: rem(20);
+    }
+  }
+
   &__game-card {
     display: flex;
     flex-direction: column;

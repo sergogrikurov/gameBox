@@ -28,9 +28,9 @@ const currentPlayerName = computed(() => (currentPlayer.value === "X" ? playerNa
 
 // Сделать ход
 function makeMove(index) {
-  if (board.value[index] || result.value) return; // занято или игра окончена
+  if (board.value[index] || result.value || currentPlayer.value !== "X") return;
 
-  board.value[index] = currentPlayer.value;
+  board.value[index] = "X";
 
   const winner = checkWinner();
   if (winner) {
@@ -38,8 +38,12 @@ function makeMove(index) {
     else score.value[winner] += 1;
     result.value = winner;
   } else {
-    // смена игрока
-    currentPlayer.value = currentPlayer.value === "X" ? "O" : "X";
+    currentPlayer.value = "O";
+
+    // задержка, чтобы было ощущение "думает"
+    setTimeout(() => {
+      botMove();
+    }, 500);
   }
 }
 
@@ -73,11 +77,91 @@ function resetGame() {
   result.value = null;
   currentPlayer.value = "X";
 }
+
+function botMove() {
+  if (result.value) return;
+
+  const lines = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6],
+  ];
+
+  // 🔥 1. Попытка выиграть
+  for (const line of lines) {
+    const move = findBestMove(line, "O");
+    if (move !== null) {
+      makeBotStep(move);
+      return;
+    }
+  }
+
+  // 🛑 2. Блокировка игрока
+  for (const line of lines) {
+    const move = findBestMove(line, "X");
+    if (move !== null) {
+      makeBotStep(move);
+      return;
+    }
+  }
+
+  // ⭐ 3. Центр
+  if (board.value[4] === "") {
+    makeBotStep(4);
+    return;
+  }
+
+  // 🔺 4. Углы
+  const corners = [0, 2, 6, 8].filter((i) => board.value[i] === "");
+  if (corners.length) {
+    makeBotStep(corners[Math.floor(Math.random() * corners.length)]);
+    return;
+  }
+
+  // 🎲 5. Любая свободная клетка
+  const emptyCells = board.value
+    .map((cell, index) => (cell === "" ? index : null))
+    .filter((i) => i !== null);
+
+  if (emptyCells.length) {
+    makeBotStep(emptyCells[Math.floor(Math.random() * emptyCells.length)]);
+  }
+}
+
+function findBestMove(line, symbol) {
+  const values = line.map((i) => board.value[i]);
+  const countSymbol = values.filter((v) => v === symbol).length;
+  const emptyIndex = values.indexOf("");
+
+  if (countSymbol === 2 && emptyIndex !== -1) {
+    return line[emptyIndex];
+  }
+
+  return null;
+}
+
+function makeBotStep(index) {
+  board.value[index] = "O";
+
+  const winner = checkWinner();
+  if (winner) {
+    if (winner === "draw") score.value.draw += 1;
+    else score.value[winner] += 1;
+    result.value = winner;
+  } else {
+    currentPlayer.value = "X";
+  }
+}
 </script>
 
 <template>
   <div class="tic-tac-toe">
-    <my-button to="/two-player" />
+    <my-button to="/single-player-game-list" />
     <div class="tic-tac-toe__container">
       <div class="tic-tac-toe__wrapper">
         <h2 class="tic-tac-toe__title">Tic-Tac-Toe</h2>

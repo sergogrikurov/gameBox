@@ -6,7 +6,20 @@ import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
 
 const route = useRoute();
 const roomId = route.params.roomId;
-const playerName = localStorage.getItem("playerName") || prompt("Введите ваше имя");
+
+const storedName = localStorage.getItem("playerName");
+let playerName = storedName;
+
+if (!storedName) {
+  playerName = prompt("Введите ваше имя");
+  if (playerName) {
+    localStorage.setItem("playerName", playerName);
+  } else {
+    // если пользователь ничего не ввёл, задаём дефолт
+    playerName = "Игрок";
+    localStorage.setItem("playerName", playerName);
+  }
+}
 
 // Состояние комнаты
 const board = ref(Array(9).fill(""));
