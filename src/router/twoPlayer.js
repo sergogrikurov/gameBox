@@ -3,6 +3,7 @@ import TwoPlayerRoomView from "@/views/TwoPlayerRoomView.vue";
 import TwoPlayerGame from "@/views/TwoPlayerGame.vue";
 
 import TicTacToe from "@/views/games/multi/TicTacToe.vue";
+import Battleship from "@/views/games/multi/BattleShip.vue";
 
 export default [
   {
@@ -34,6 +35,15 @@ export default [
     component: TicTacToe,
     meta: {
       title: "TicTacToe",
+    },
+  },
+
+  {
+    path: "/two-player-game/battleShip/:roomId",
+    name: "twoPlayerBattleship",
+    component: Battleship,
+    meta: {
+      title: "Battleship",
     },
   },
 ];

@@ -4,7 +4,9 @@ import { translations } from "@/composables/locales.js";
 import { useLanguage } from "@/composables/useLanguage.js";
 import MyButton from "@/components/MyButton.vue";
 import { useRouter } from "vue-router";
+
 import ticTacToeImg from "@/assets/game/tic-tac-toe.png";
+import battleshipImg from "@/assets/game/battleship.png";
 
 const { language } = useLanguage();
 const router = useRouter();
@@ -16,6 +18,13 @@ const games = ref([
     titleKey: "ticTacToe",
     descriptionKey: "ticTacToeDesc",
     img: ticTacToeImg,
+  },
+  {
+    id: 2,
+    key: "Battleship",
+    titleKey: "battleship",
+    descriptionKey: "battleshipDesc",
+    img: battleshipImg,
   },
 ]);
 

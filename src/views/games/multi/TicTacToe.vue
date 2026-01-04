@@ -1,63 +1,176 @@
+<template>
+  <div class="tic-tac-toe">
+    <h2>Крестики-нолики</h2>
+
+    <div v-if="gameData">
+      <!-- Игроки -->
+      <div class="players">
+        <div class="player" :class="{ active: gameData.currentPlayer === gameData.player1 }">
+          {{ gameData.player1 }}
+          <span class="symbol x">X</span>
+          — {{ gameData.scorePlayer1 ?? 0 }}
+        </div>
+
+        <div class="player" :class="{ active: gameData.currentPlayer === gameData.player2 }">
+          {{ gameData.player2 }}
+          <span class="symbol o">O</span>
+          — {{ gameData.scorePlayer2 ?? 0 }}
+        </div>
+      </div>
+
+      <!-- Статус -->
+      <p class="status" v-if="!gameData.winner && !isDraw">
+        Ход игрока: <strong>{{ gameData.currentPlayer }}</strong>
+      </p>
+
+      <p class="status" v-if="gameData.winner">
+        🏆 Победил: <strong>{{ gameData.winner }}</strong>
+      </p>
+
+      <p class="status" v-if="isDraw">🤝 Ничья</p>
+
+      <!-- Поле -->
+      <div class="board" :class="{ disabled: gameFinished && blockBoard }">
+        <div
+          v-for="(cell, index) in gameData.board"
+          :key="index"
+          class="cell"
+          :class="[cellClass(cell), gameData.winLine?.includes(index) ? 'win' : '']"
+          @click="makeMove(index)"
+        >
+          {{ cell }}
+        </div>
+      </div>
+
+      <!-- Кнопки управления -->
+      <div class="buttons">
+        <!-- Кнопка всегда активна -->
+        <button class="reset" @click="resetGame">Новая игра</button>
+        <button class="exit" @click="exitGame">Выйти</button>
+        <button class="back" @click="exitGame">Назад</button>
+      </div>
+    </div>
+
+    <div v-else>Загрузка…</div>
+  </div>
+</template>
+
 <script setup>
-import { ref, onMounted, computed } from "vue";
-import { useRoute } from "vue-router";
+import { ref, onMounted, computed, onUnmounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { db } from "@/firebase/firebase.js";
-import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
 
 const route = useRoute();
-const roomId = route.params.roomId;
+const router = useRouter();
+const gameId = route.params.roomId;
 
-const storedName = localStorage.getItem("playerName");
-let playerName = storedName;
+const gameData = ref(null);
+const myName = localStorage.getItem("playerName");
 
-if (!storedName) {
-  playerName = prompt("Введите ваше имя");
-  if (playerName) {
-    localStorage.setItem("playerName", playerName);
-  } else {
-    // если пользователь ничего не ввёл, задаём дефолт
-    playerName = "Игрок";
-    localStorage.setItem("playerName", playerName);
+let unsubscribe = null;
+
+// Блокировка доски после окончания игры (можно отключить)
+const blockBoard = true;
+
+onMounted(async () => {
+  const gameRef = doc(db, "games", gameId);
+
+  // Получаем начальные данные
+  const snap = await getDoc(gameRef);
+  if (snap.exists()) gameData.value = snap.data();
+
+  // Подписка на изменения документа
+  unsubscribe = onSnapshot(gameRef, (snap) => {
+    if (!snap.exists()) {
+      router.push({ name: "twoPlayerGameList" });
+      return;
+    }
+    gameData.value = snap.data();
+  });
+});
+
+onUnmounted(() => {
+  if (unsubscribe) unsubscribe();
+});
+
+const isDraw = computed(() => {
+  if (!gameData.value) return false;
+  return !gameData.value.winner && gameData.value.board.every((c) => c !== "");
+});
+
+const gameFinished = computed(() => {
+  return gameData.value?.winner || isDraw.value;
+});
+
+// Ход игрока
+const makeMove = async (index) => {
+  if (!gameData.value) return;
+  if (gameFinished.value && blockBoard) return;
+  if (gameData.value.currentPlayer !== myName) return;
+  if (gameData.value.board[index] !== "") return;
+
+  const board = [...gameData.value.board];
+  const symbol = myName === gameData.value.player1 ? "X" : "O";
+  board[index] = symbol;
+
+  const winnerResult = checkWinner(board);
+
+  let winnerName = null;
+  let winLine = [];
+  let scoreUpdate = {};
+
+  if (winnerResult) {
+    winnerName = winnerResult.symbol === "X" ? gameData.value.player1 : gameData.value.player2;
+    winLine = winnerResult.line;
+
+    if (winnerResult.symbol === "X") {
+      scoreUpdate.scorePlayer1 = (gameData.value.scorePlayer1 ?? 0) + 1;
+    } else {
+      scoreUpdate.scorePlayer2 = (gameData.value.scorePlayer2 ?? 0) + 1;
+    }
   }
-}
 
-// Состояние комнаты
-const board = ref(Array(9).fill(""));
-const currentPlayer = ref("X");
-const result = ref(null);
-const roomData = ref({
-  player1: "",
-  player2: "",
-  wins1: 0,
-  wins2: 0,
-  totalGames: 0,
-  status: "waiting",
-});
+  const nextPlayer =
+    myName === gameData.value.player1 ? gameData.value.player2 : gameData.value.player1;
 
-// Вычисляемый символ для этого игрока
-const mySymbol = computed(() => {
-  if (playerName === roomData.value.player1) return "X";
-  if (playerName === roomData.value.player2) return "O";
-  return "";
-});
+  await updateDoc(doc(db, "games", gameId), {
+    board,
+    currentPlayer: winnerName ? gameData.value.currentPlayer : nextPlayer,
+    winner: winnerName,
+    winLine,
+    lastActive: new Date(),
+    ...scoreUpdate,
+  });
+};
 
-// Имя текущего игрока, чей ход
-const currentPlayerName = computed(() => {
-  if (!roomData.value.player1 || !roomData.value.player2) return "";
-  return currentPlayer.value === "X" ? roomData.value.player1 : roomData.value.player2;
-});
+// Сброс игры
+const resetGame = async () => {
+  if (!gameData.value) return;
+  await updateDoc(doc(db, "games", gameId), {
+    board: Array(9).fill(""),
+    winner: null,
+    winLine: [],
+    currentPlayer: Math.random() > 0.5 ? gameData.value.player1 : gameData.value.player2,
+    lastActive: new Date(),
+  });
+};
 
-const winnerName = computed(() => {
-  if (result.value === "X") return roomData.value.player1;
-  if (result.value === "O") return roomData.value.player2;
-  return "";
-});
+// Выйти/назад
+const exitGame = async () => {
+  if (!gameData.value) return;
 
-// Классы для клеток
-const cellClass = (cell) => (cell === "X" ? "x" : cell === "O" ? "o" : "");
+  const gameRef = doc(db, "games", gameId);
+  const roomRef = doc(db, "rooms", gameData.value.roomId);
 
-// Проверка победителя
-function checkWinner(b) {
+  await deleteDoc(gameRef);
+  await deleteDoc(roomRef);
+
+  router.push({ name: "twoPlayerGameList" });
+};
+
+// Проверка победной линии
+const checkWinner = (b) => {
   const lines = [
     [0, 1, 2],
     [3, 4, 5],
@@ -68,198 +181,112 @@ function checkWinner(b) {
     [0, 4, 8],
     [2, 4, 6],
   ];
-  for (let [a, bIndex, c] of lines) {
-    if (b[a] && b[a] === b[bIndex] && b[a] === b[c]) return b[a];
+  for (const [a, c, d] of lines) {
+    if (b[a] && b[a] === b[c] && b[a] === b[d]) {
+      return { symbol: b[a], line: [a, c, d] };
+    }
   }
-  if (b.every((cell) => cell)) return "draw";
   return null;
-}
+};
 
-// Сделать ход
-async function makeMove(index) {
-  if (
-    !mySymbol.value ||
-    board.value[index] ||
-    result.value ||
-    mySymbol.value !== currentPlayer.value
-  )
-    return;
-
-  board.value[index] = mySymbol.value;
-  const nextPlayer = mySymbol.value === "X" ? "O" : "X";
-  const winner = checkWinner(board.value);
-
-  const roomRef = doc(db, "rooms", roomId);
-
-  const updates = {
-    board: board.value,
-    currentPlayer: nextPlayer,
-    result: winner,
-  };
-
-  // ✅ если есть победитель — сразу обновляем счёт
-  if (winner === "X") {
-    updates.wins1 = roomData.value.wins1 + 1;
-    updates.totalGames = roomData.value.totalGames + 1;
-  } else if (winner === "O") {
-    updates.wins2 = roomData.value.wins2 + 1;
-    updates.totalGames = roomData.value.totalGames + 1;
-  } else if (winner === "draw") {
-    updates.totalGames = roomData.value.totalGames + 1;
-  }
-
-  await updateDoc(roomRef, updates);
-}
-
-// Сброс игры
-async function resetGame() {
-  const roomRef = doc(db, "rooms", roomId);
-
-  // обновляем счёт
-  let newWins1 = roomData.value.wins1;
-  let newWins2 = roomData.value.wins2;
-  if (result.value === "X") newWins1++;
-  if (result.value === "O") newWins2++;
-  const totalGames = roomData.value.totalGames + (result.value ? 1 : 0);
-
-  await updateDoc(roomRef, {
-    board: Array(9).fill(""),
-    currentPlayer: "X",
-    result: null,
-    wins1: newWins1,
-    wins2: newWins2,
-    totalGames: totalGames,
-  });
-}
-
-// Подписка на комнату
-onMounted(async () => {
-  const roomRef = doc(db, "rooms", roomId);
-  const snap = await getDoc(roomRef);
-  if (!snap.exists()) {
-    console.error("Room not found");
-    return;
-  }
-
-  const data = snap.data();
-  roomData.value.player1 = data.player1;
-  roomData.value.player2 = data.player2 || "";
-  roomData.value.wins1 = data.wins1 || 0;
-  roomData.value.wins2 = data.wins2 || 0;
-  roomData.value.totalGames = data.totalGames || 0;
-  roomData.value.status = data.status || "waiting";
-
-  onSnapshot(roomRef, (docSnap) => {
-    if (!docSnap.exists()) return;
-    const data = docSnap.data();
-    board.value = data.board;
-    currentPlayer.value = data.currentPlayer;
-    result.value = data.result;
-    roomData.value.player1 = data.player1;
-    roomData.value.player2 = data.player2 || "";
-    roomData.value.wins1 = data.wins1 || 0;
-    roomData.value.wins2 = data.wins2 || 0;
-    roomData.value.totalGames = data.totalGames || 0;
-    roomData.value.status = data.status || "waiting";
-  });
-});
+const cellClass = (cell) => {
+  if (cell === "X") return "x";
+  if (cell === "O") return "o";
+  return "";
+};
 </script>
 
-<template>
-  <div class="game-container">
-    <h2>Tic-Tac-Toe</h2>
-
-    <!-- Имя игрока вместо "Ты" -->
-    <p>{{ playerName }} ({{ mySymbol }}):</p>
-
-    <!-- Ход текущего игрока -->
-    <p v-if="!result && roomData.player2">Ход: {{ currentPlayerName }}</p>
-    <p v-else-if="!roomData.player2">Ждём второго игрока...</p>
-
-    <!-- Результат игры -->
-    <p v-else>
-      Результат:
-      <span v-if="result === 'draw'">Ничья</span>
-      <span v-else>{{ winnerName }} победил</span>
-    </p>
-
-    <!-- Счёт -->
-    <div class="scoreboard">
-      <p>{{ roomData.player1 }}: {{ roomData.wins1 }}</p>
-      <p>{{ roomData.player2 || "Ждём второго игрока..." }}: {{ roomData.wins2 }}</p>
-      <p>Общий счёт партий: {{ roomData.totalGames }}</p>
-    </div>
-
-    <!-- Игровое поле -->
-    <div class="board">
-      <div
-        v-for="(cell, index) in board"
-        :key="index"
-        class="cell"
-        :class="cellClass(cell)"
-        @click="makeMove(index)"
-      >
-        {{ cell }}
-      </div>
-    </div>
-
-    <!-- Кнопка сброса -->
-    <button @click="resetGame" :disabled="!result">Reset Game</button>
-  </div>
-</template>
-
 <style scoped>
-.game-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 20px;
+.tic-tac-toe {
+  padding: 20px;
+  font-family: sans-serif;
 }
 
-.scoreboard {
+.players {
+  display: flex;
+  gap: 20px;
   margin-bottom: 10px;
+}
+
+.player {
+  background: #eee;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.player.active {
+  background: #dff0d8;
+  font-weight: bold;
+}
+
+.symbol {
+  margin-left: 6px;
+  font-weight: bold;
+}
+
+.symbol.x,
+.cell.x {
+  color: red;
+}
+
+.symbol.o,
+.cell.o {
+  color: dodgerblue;
+}
+
+.status {
+  margin: 10px 0;
+  font-size: 16px;
 }
 
 .board {
   display: grid;
-  grid-template-columns: repeat(3, 80px);
-  grid-template-rows: repeat(3, 80px);
-  gap: 5px;
-  margin-top: 20px;
+  grid-template-columns: repeat(3, 70px);
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.board.disabled {
+  pointer-events: none;
+  opacity: 0.7;
 }
 
 .cell {
+  width: 70px;
+  height: 70px;
+  border: 1px solid #333;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f0f0f0;
-  font-size: 32px;
+  font-size: 28px;
+  cursor: pointer;
+  background: #f5f5f5;
+}
+
+.cell.win {
+  animation: blink 0.8s infinite alternate;
   font-weight: bold;
+}
+
+@keyframes blink {
+  from {
+    background: #ffff66;
+  }
+  to {
+    background: #ffd700;
+  }
+}
+
+.buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.reset,
+.exit,
+.back {
+  padding: 6px 12px;
   cursor: pointer;
-}
-
-.cell:hover {
-  background: #ddd;
-}
-
-/* классы для символов */
-.cell.x {
-  color: red; /* стилизуй как хочешь */
-}
-
-.cell.o {
-  color: blue;
-}
-
-button {
-  margin-top: 20px;
-  padding: 8px 16px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 </style>

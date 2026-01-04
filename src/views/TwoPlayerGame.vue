@@ -20,5 +20,12 @@ onMounted(() => {
       params: { roomId },
     });
   }
+
+  if (game === "Battleship") {
+    router.replace({
+      name: "twoPlayerBattleship",
+      params: { roomId },
+    });
+  }
 });
 </script>
