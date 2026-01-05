@@ -120,6 +120,7 @@ const initRoom = async () => {
 };
 
 // ---------- Кнопка Start Game ----------
+// ---------- Кнопка Start Game ----------
 const startGame = async () => {
   if (!roomId.value) return;
 
@@ -142,9 +143,11 @@ const startGame = async () => {
 
   let gameDocId = "";
   if (!qSnap.empty) {
+    // Игра уже есть → берём её id
     gameDocId = qSnap.docs[0].id;
   } else {
-    const gameData = {
+    // Создаём новую игру морской бой
+    let gameData = {
       roomId: roomId.value,
       game: gameKey,
       player1: data.player1,
@@ -152,22 +155,44 @@ const startGame = async () => {
       status: "ongoing",
       currentPlayer: data.player1,
       createdAt: serverTimestamp(),
-      board: Array(9).fill(""), // TicTacToe поле 3x3
-      winner: null,
     };
+
+    if (gameKey === "Battleship") {
+      // правильное создание полей для морского боя
+      const emptyGrid = () =>
+        Array(100)
+          .fill(null)
+          .map(() => ({ ship: false, hit: false, miss: false }));
+
+      gameData.player1Grid = emptyGrid();
+      gameData.player2Grid = emptyGrid();
+      gameData.shipsPlayer1 = [];
+      gameData.shipsPlayer2 = [];
+      gameData.hitHistory = [];
+      gameData.winner = null;
+      gameData.scorePlayer1 = 0;
+      gameData.scorePlayer2 = 0;
+    }
+
+    // Для TicTacToe оставляем как было
+    else if (gameKey === "TicTacToe") {
+      gameData.board = Array(9).fill("");
+      gameData.winner = null;
+    }
+
     const gameDocRef = await addDoc(gamesRef, gameData);
     gameDocId = gameDocRef.id;
   }
 
   // Редирект на компонент игры
-  if (gameKey === "TicTacToe") {
-    router.push({
-      name: "twoPlayerTicTacToe",
-      params: { roomId: gameDocId },
-    });
-  } else if (gameKey === "Battleship") {
+  if (gameKey === "Battleship") {
     router.push({
       name: "twoPlayerBattleship",
+      params: { roomId: gameDocId },
+    });
+  } else if (gameKey === "TicTacToe") {
+    router.push({
+      name: "twoPlayerTicTacToe",
       params: { roomId: gameDocId },
     });
   }

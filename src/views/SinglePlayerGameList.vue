@@ -4,8 +4,10 @@ import { translations } from "@/composables/locales.js";
 import { useLanguage } from "@/composables/useLanguage.js";
 import MyButton from "@/components/MyButton.vue";
 import memoryImg from "@/assets/game/memory.png";
-import { useRouter } from "vue-router";
 import ticTacToeImg from "@/assets/game/tic-tac-toe.png";
+import battleshipImg from "@/assets/game/battleship.png";
+import { useRouter } from "vue-router";
+
 const router = useRouter();
 
 const { language } = useLanguage();
@@ -19,11 +21,18 @@ const games = ref([
     img: memoryImg,
   },
   {
-    id: 1,
+    id: 2,
     key: "TicTacToe",
     titleKey: "ticTacToe",
     descriptionKey: "ticTacToeDesc",
     img: ticTacToeImg,
+  },
+  {
+    id: 3,
+    key: "battleship",
+    titleKey: "battleship",
+    descriptionKey: "battleshipDesc",
+    img: battleshipImg,
   },
 ]);
 

@@ -3,6 +3,7 @@ import SinglePlayerGame from "@/views/SinglePlayerGame.vue";
 
 import Memory from "@/views/games/single/MemoryGame.vue";
 import TicTacToe from "@/views/games/single/Tic-Tac-Toe.vue";
+import BattleShip from "@/views/games/single/BattleShip.vue";
 
 export default [
   {
@@ -36,6 +37,14 @@ export default [
     component: TicTacToe,
     meta: {
       title: "TicTacToe",
+    },
+  },
+  {
+    path: "/single-player/battleShip",
+    name: "battleShip",
+    component: BattleShip,
+    meta: {
+      title: "BattleShip",
     },
   },
 ];
