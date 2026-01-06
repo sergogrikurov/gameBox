@@ -59,6 +59,7 @@ onMounted(() => {
   background-color: #000;
   overflow: hidden;
   &__wrapper {
+    height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;

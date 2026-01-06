@@ -1,77 +1,9 @@
-<template>
-  <div class="battle-container">
-    <h1>Морской бой</h1>
-
-    <!-- Индикатор хода и счёт -->
-    <div class="status">
-      <p v-if="!winner">Сейчас ход: {{ currentTurn === "player" ? myName : "Бот" }}</p>
-      <p v-else>Победитель: {{ winner }}</p>
-      <p>{{ myName }}: {{ score.player }}</p>
-      <p>Бот: {{ score.bot }}</p>
-    </div>
-
-    <div class="boards">
-      <!-- Игрок -->
-      <div class="board">
-        <h2>{{ myName }}</h2>
-        <div class="grid-container">
-          <div class="header-row">
-            <div class="header-cell"></div>
-            <div v-for="letter in letters" :key="'hl' + letter" class="header-cell">
-              {{ letter }}
-            </div>
-          </div>
-          <div v-for="r in 10" :key="'pr' + r" class="row">
-            <div class="header-cell">{{ r }}</div>
-            <div
-              v-for="c in 10"
-              :key="'pc' + c"
-              class="cell"
-              :class="{
-                ship: playerGrid[(r - 1) * 10 + (c - 1)]?.ship,
-                hit: playerGrid[(r - 1) * 10 + (c - 1)]?.hit,
-                miss: playerGrid[(r - 1) * 10 + (c - 1)]?.miss,
-              }"
-            ></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Бот -->
-      <div class="board">
-        <h2>Бот</h2>
-        <div class="grid-container">
-          <div class="header-row">
-            <div class="header-cell"></div>
-            <div v-for="letter in letters" :key="'hlb' + letter" class="header-cell">
-              {{ letter }}
-            </div>
-          </div>
-          <div v-for="r in 10" :key="'br' + r" class="row">
-            <div class="header-cell">{{ r }}</div>
-            <div
-              v-for="c in 10"
-              :key="'bc' + c"
-              class="cell"
-              :class="{
-                hit: botGrid[(r - 1) * 10 + (c - 1)]?.hit,
-                miss: botGrid[(r - 1) * 10 + (c - 1)]?.miss,
-              }"
-              @click="currentTurn === 'player' ? shootAtBot((r - 1) * 10 + (c - 1)) : null"
-            ></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="info">
-      <button @click="startNewGame">Новая игра</button>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref } from "vue";
+import MyButton from "@/components/MyButton.vue";
+import { translations } from "@/composables/locales.js";
+import { useLanguage } from "@/composables/useLanguage";
+const { language } = useLanguage();
 
 const hitSound = new Audio("/sounds/hit.mp3");
 const sinkSound = new Audio("/sounds/sink.mp3");
@@ -310,7 +242,193 @@ function startNewGame() {
 startNewGame();
 </script>
 
-<style scoped>
+<template>
+  <div class="battleShip">
+    <my-button to="/single-player-game-list" />
+    <h2 class="battleShip__title">BattleShip</h2>
+
+    <div class="battleShip__container battle-container">
+      <div class="battleShip__wrapper">
+        <!-- Индикатор хода и счёт -->
+        <div class="battleShip__status status">
+          <p class="battleShip__status_move" v-if="!winner">
+            {{ translations[language].yourMove }}:
+            <span>{{ currentTurn === "player" ? myName : "Bot" }}</span>
+          </p>
+
+          <p class="battleShip__status_winner" v-else>
+            {{ translations[language].win }}: {{ winner }}
+          </p>
+
+          <p class="battleShip__status_name-score">
+            {{ myName }}: <span>{{ score.player }}</span>
+          </p>
+
+          <p class="battleShip__status_name-score battleShip__status_name-score-bot">
+            Bot: <span>{{ score.bot }}</span>
+          </p>
+        </div>
+
+        <div class="battleShip__boards boards">
+          <!-- Игрок -->
+          <div class="boards__my-board board">
+            <h2 class="boards__my-board_name">{{ myName }}</h2>
+            <div class="board__wrapper grid-container">
+              <div class="board__header header-row">
+                <div class="board__header_cell-empty header-cell"></div>
+                <div
+                  v-for="letter in letters"
+                  :key="'hl' + letter"
+                  class="board__header_cell header-cell"
+                >
+                  {{ letter }}
+                </div>
+              </div>
+              <div v-for="r in 10" :key="'pr' + r" class="board__row row">
+                <div class="header-cell">{{ r }}</div>
+                <div
+                  v-for="c in 10"
+                  :key="'pc' + c"
+                  class="cell"
+                  :class="{
+                    ship: playerGrid[(r - 1) * 10 + (c - 1)]?.ship,
+                    hit: playerGrid[(r - 1) * 10 + (c - 1)]?.hit,
+                    miss: playerGrid[(r - 1) * 10 + (c - 1)]?.miss,
+                  }"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Бот -->
+          <div class="boards__opponent board">
+            <h2 class="boards__opponent_name">Bot</h2>
+            <div class="board__wrapper grid-container">
+              <div class="board__header header-row">
+                <div class="board__header_cell-empty header-cell"></div>
+                <div
+                  v-for="letter in letters"
+                  :key="'hlb' + letter"
+                  class="board__header_cell header-cell"
+                >
+                  {{ letter }}
+                </div>
+              </div>
+              <div v-for="r in 10" :key="'br' + r" class="board__row row">
+                <div class="header-cell">{{ r }}</div>
+                <div
+                  v-for="c in 10"
+                  :key="'bc' + c"
+                  class="cell"
+                  :class="{
+                    hit: botGrid[(r - 1) * 10 + (c - 1)]?.hit,
+                    miss: botGrid[(r - 1) * 10 + (c - 1)]?.miss,
+                  }"
+                  @click="currentTurn === 'player' ? shootAtBot((r - 1) * 10 + (c - 1)) : null"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="battleShip__new-game info">
+          <button class="battleShip__new-game_btn" @click="startNewGame">
+            {{ translations[language].newGame }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style lang="scss" scoped>
+.battleShip {
+  @include adaptive-value(padding-top, 50, 0);
+  padding-bottom: rem(50);
+  &__title {
+    text-align: center;
+    @include adaptive-value(margin-top, 50, 10);
+    font-size: rem(30);
+    color: #457b9d;
+  }
+  &__wrapper {
+    @include adaptive-value(margin-top, 50, 10);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  &__status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    & > *:not(:last-child) {
+      @include adaptive-value(margin-bottom, 20, 10);
+    }
+    &_move {
+      color: green;
+      & span {
+        color: red;
+      }
+    }
+    &_name-score {
+      color: red;
+      & span {
+        color: blue;
+      }
+    }
+    &_name-score-bot {
+      color: rebeccapurple;
+    }
+  }
+  &__new-game {
+    margin-top: rem(20);
+    &_btn {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: rem(49);
+      font-size: rem(20);
+      background-color: #4caf50;
+      border-radius: rem(12);
+      font-style: italic;
+      color: #fff;
+      @include adaptive-value(width, 250, 200);
+      @include adaptive-value(margin-top, 20, 10);
+
+      &:not(:disabled):hover {
+        background-color: #45a049;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.25);
+      }
+
+      &:not(:disabled):active {
+        background-color: #3e8e41;
+        transform: translateY(0);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+.boards__my-board {
+  &_name {
+    font-size: rem(22);
+    color: red;
+    margin-bottom: rem(10);
+  }
+}
+.boards__opponent {
+  &_name {
+    font-size: rem(22);
+    color: rebeccapurple;
+    margin-bottom: rem(10);
+  }
+}
+
 .battle-container {
   display: flex;
   flex-direction: column;
@@ -318,13 +436,17 @@ startNewGame();
   gap: 1rem;
 }
 .status {
-  font-size: 18px;
+  font-size: rem(18);
   font-weight: bold;
   margin-bottom: 1rem;
 }
 .boards {
   display: flex;
-  gap: 2rem;
+  @include adaptive-value(gap, 50, 10);
+  @media (max-width: rem(1024)) {
+    flex-direction: column;
+    align-items: center;
+  }
 }
 .board {
   display: flex;
@@ -336,24 +458,24 @@ startNewGame();
   flex-direction: column;
 }
 .header-row {
-  display: grid;
-  grid-template-columns: repeat(11, 30px);
+  display: flex;
 }
 .header-cell {
-  width: 30px;
-  height: 30px;
+  @include adaptive-value(width, 40, 26);
+  @include adaptive-value(height, 40, 26);
   display: flex;
   justify-content: center;
   align-items: center;
   font-weight: bold;
 }
+
 .row {
-  display: grid;
-  grid-template-columns: repeat(11, 30px);
+  display: flex;
 }
+
 .cell {
-  width: 30px;
-  height: 30px;
+  @include adaptive-value(width, 40, 26);
+  @include adaptive-value(height, 40, 26);
   background-color: #a0c4ff;
   border: 1px solid #fff;
   display: flex;
@@ -361,12 +483,15 @@ startNewGame();
   align-items: center;
   cursor: pointer;
 }
+
 .cell.ship {
   background-color: #457b9d;
 }
+
 .cell.hit {
   background-color: red;
 }
+
 .cell.miss {
   background: #a0c4ff;
   position: relative;
@@ -375,24 +500,12 @@ startNewGame();
 .cell.miss::after {
   content: "✕";
   color: #333;
-  font-size: 22px;
+  font-size: rem(22);
   font-weight: bold;
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-button {
-  padding: 0.5rem 1rem;
-  font-size: 16px;
-  cursor: pointer;
 }
 </style>

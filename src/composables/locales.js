@@ -22,6 +22,8 @@ export const translations = {
     resetGame: "Сбросить игру",
     moves: "Ходов",
     congratulations: "Поздравляем! Все пары найдены",
+    win: "победил",
+    newGame: "Новая игра",
   },
   ka: {
     chooseLanguage: "აირჩიე ენა",
@@ -46,5 +48,7 @@ export const translations = {
     resetGame: "გადატვირთვა",
     moves: "სვლები",
     congratulations: "გილოცავთ! ყველა წყვილი ნაპოვნია",
+    win: "მოიგო",
+    newGame: "ახალი თამაში",
   },
 };

@@ -173,8 +173,9 @@ function makeBotStep(index) {
             >{{ translations[language].draw }}!</span
           >
           <span class="tic-tac-toe__win" v-else
-            ><span>{{ result === "X" ? playerName : otherPlayer }}</span> победил!</span
-          >
+            ><span>{{ result === "X" ? playerName : otherPlayer }}</span>
+            {{ translations[language].win }}!
+          </span>
         </p>
         <div class="tic-tac-toe__board">
           <div
