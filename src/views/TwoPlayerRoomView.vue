@@ -14,6 +14,11 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { useRoute, useRouter } from "vue-router";
+import { translations } from "@/composables/locales.js";
+import { useLanguage } from "@/composables/useLanguage";
+import MyButton from "@/components/MyButton.vue";
+
+const { language } = useLanguage();
 
 // ---------- REF для имени и модалки ----------
 const playerName = ref(localStorage.getItem("playerName") || "");
@@ -120,7 +125,6 @@ const initRoom = async () => {
 };
 
 // ---------- Кнопка Start Game ----------
-// ---------- Кнопка Start Game ----------
 const startGame = async () => {
   if (!roomId.value) return;
 
@@ -214,30 +218,207 @@ const copyInviteLink = () => {
 </script>
 
 <template>
-  <div>
-    <h2>Комната для игры: {{ gameKey }}</h2>
+  <div class="room">
+    <div class="room__container">
+      <my-button to="/two-player-game-list" />
+      <h2 class="room__title">{{ gameKey }}</h2>
+      <div class="room__wrapper">
+        <div class="room__modal" v-if="showNameModal">
+          <input class="room__modal_input" v-model="nameInput" placeholder="Name" />
+          <button class="room__modal_btn" @click="submitName">
+            {{ translations[language].saveName || "Save" }}
+          </button>
+        </div>
 
-    <div v-if="showNameModal">
-      <input v-model="nameInput" placeholder="Введите имя" />
-      <button @click="submitName">Сохранить имя</button>
-    </div>
+        <div class="room__text-list-wrapper" v-else>
+          <div class="room__text-list">
+            <p class="room__text-list_player-one">
+              {{ translations[language].player || "Player" }} 1: {{ roomData.player1 || "-" }}
+            </p>
+            <p class="room__text-list_player-two">
+              {{ translations[language].player || "Player" }} 2:
+              {{ roomData.player2 || "waiting" }}
+            </p>
+            <p class="room__text-list_room-status">
+              {{ translations[language].status || "Status" }}: {{ roomData.status }}
+            </p>
+          </div>
 
-    <div v-else>
-      <p>Вы: {{ playerName }}</p>
-      <p>Игрок 1: {{ roomData.player1 || "-" }}</p>
-      <p>Игрок 2: {{ roomData.player2 || "Ждём второго игрока..." }}</p>
-      <p>Статус комнаты: {{ roomData.status }}</p>
+          <div class="room__link" v-if="roomData.status !== 'ready'">
+            <input class="room__link_input" :value="inviteLink" readonly />
+            <button class="room__link_btn" @click="copyInviteLink">
+              {{ copied ? "Скопировано!" : "Скопировать ссылку" }}
+            </button>
+          </div>
 
-      <button @click="startGame" :disabled="!roomData.player1 || !roomData.player2">
-        Start Game
-      </button>
-
-      <div>
-        <input :value="inviteLink" readonly />
-        <button @click="copyInviteLink">
-          {{ copied ? "Скопировано!" : "Скопировать ссылку" }}
-        </button>
+          <button
+            class="room__btn-start"
+            @click="startGame"
+            :disabled="!roomData.player1 || !roomData.player2"
+          >
+            {{ translations[language].play || "Play" }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
+
+<style lang="scss" scoped>
+.room {
+  @include adaptive-value(padding-top, 50, 20);
+  &__title {
+    text-align: center;
+    @include adaptive-value(font-size, 50, 20);
+    color: green;
+    @include adaptive-value(margin-top, 50, 20);
+  }
+  &__wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    @include adaptive-value(margin-top, 50, 20);
+    & > *:not(:last-child) {
+      margin-bottom: rem(20);
+    }
+  }
+  &__modal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: rem(290);
+    &_input {
+      @include adaptive-value(width, 250, 200);
+      font-size: rem(20);
+      padding: rem(10) rem(5);
+      border-radius: rem(5);
+    }
+    &_btn {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: rem(49);
+      font-size: rem(20);
+      background-color: #03bff8;
+      border-radius: rem(12);
+      font-style: italic;
+      color: #fff;
+      @include adaptive-value(width, 250, 200);
+      @include adaptive-value(margin-top, 20, 10);
+
+      &:not(:disabled):hover {
+        background-color: #11c2f8;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.25);
+      }
+
+      &:not(:disabled):active {
+        background-color: #03ade0;
+        transform: translateY(0);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+  &__text-list-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    & > *:not(:last-child) {
+      margin-bottom: rem(10);
+    }
+  }
+  &__text-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    @include adaptive-value(font-size, 40, 20);
+    &_player-one {
+      color: red;
+    }
+    &_player-two {
+      color: blue;
+    }
+    &_room-status {
+      color: blueviolet;
+    }
+  }
+  &__btn-start {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: rem(49);
+    font-size: rem(20);
+    background-color: #4caf50;
+    border-radius: rem(12);
+    font-style: italic;
+    color: #fff;
+    @include adaptive-value(width, 250, 200);
+    @include adaptive-value(margin-top, 20, 10);
+
+    &:not(:disabled):hover {
+      background-color: #45a049;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    &:not(:disabled):active {
+      background-color: #3e8e41;
+      transform: translateY(0);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+  &__link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: rem(290);
+    overflow: hidden;
+    &_input {
+      font-size: rem(20);
+      padding: rem(10) rem(5);
+      border-radius: rem(5);
+    }
+    &_btn {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: rem(49);
+      font-size: rem(20);
+      background-color: #03bff8;
+      border-radius: rem(12);
+      font-style: italic;
+      color: #fff;
+      @include adaptive-value(width, 250, 200);
+      @include adaptive-value(margin-top, 20, 10);
+
+      &:not(:disabled):hover {
+        background-color: #11c2f8;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.25);
+      }
+
+      &:not(:disabled):active {
+        background-color: #03ade0;
+        transform: translateY(0);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+</style>

@@ -1,65 +1,12 @@
-<template>
-  <div class="tic-tac-toe">
-    <h2>Крестики-нолики</h2>
-
-    <div v-if="gameData">
-      <!-- Игроки -->
-      <div class="players">
-        <div class="player" :class="{ active: gameData.currentPlayer === gameData.player1 }">
-          {{ gameData.player1 }}
-          <span class="symbol x">X</span>
-          — {{ gameData.scorePlayer1 ?? 0 }}
-        </div>
-
-        <div class="player" :class="{ active: gameData.currentPlayer === gameData.player2 }">
-          {{ gameData.player2 }}
-          <span class="symbol o">O</span>
-          — {{ gameData.scorePlayer2 ?? 0 }}
-        </div>
-      </div>
-
-      <!-- Статус -->
-      <p class="status" v-if="!gameData.winner && !isDraw">
-        Ход игрока: <strong>{{ gameData.currentPlayer }}</strong>
-      </p>
-
-      <p class="status" v-if="gameData.winner">
-        🏆 Победил: <strong>{{ gameData.winner }}</strong>
-      </p>
-
-      <p class="status" v-if="isDraw">🤝 Ничья</p>
-
-      <!-- Поле -->
-      <div class="board" :class="{ disabled: gameFinished && blockBoard }">
-        <div
-          v-for="(cell, index) in gameData.board"
-          :key="index"
-          class="cell"
-          :class="[cellClass(cell), gameData.winLine?.includes(index) ? 'win' : '']"
-          @click="makeMove(index)"
-        >
-          {{ cell }}
-        </div>
-      </div>
-
-      <!-- Кнопки управления -->
-      <div class="buttons">
-        <!-- Кнопка всегда активна -->
-        <button class="reset" @click="resetGame">Новая игра</button>
-        <button class="exit" @click="exitGame">Выйти</button>
-        <button class="back" @click="exitGame">Назад</button>
-      </div>
-    </div>
-
-    <div v-else>Загрузка…</div>
-  </div>
-</template>
-
 <script setup>
 import { ref, onMounted, computed, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { db } from "@/firebase/firebase.js";
 import { doc, getDoc, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
+import { translations } from "@/composables/locales.js";
+import { useLanguage } from "@/composables/useLanguage.js";
+
+const { language } = useLanguage();
 
 const route = useRoute();
 const router = useRouter();
@@ -196,76 +143,244 @@ const cellClass = (cell) => {
 };
 </script>
 
-<style scoped>
+<template>
+  <div class="tic-tac-toe">
+    <div class="tic-tac-toe__container">
+      <h2 class="tic-tac-toe__title">Tic-Tac-Toe</h2>
+      <div class="tic-tac-toe__wrapper" v-if="gameData">
+        <div class="tic-tac-toe__players">
+          <div
+            class="tic-tac-toe__player"
+            :class="{ active: gameData.currentPlayer === gameData.player1 }"
+          >
+            <span class="tic-tac-toe__player_my-name">{{ gameData.player1 }}</span>
+            <span class="tic-tac-toe__player_symbol-x">X</span>
+            <span class="tic-tac-toe__player_score">{{ gameData.scorePlayer1 ?? 0 }}</span>
+          </div>
+
+          <div
+            class="tic-tac-toe__player"
+            :class="{ active: gameData.currentPlayer === gameData.player2 }"
+          >
+            <span class="tic-tac-toe__player_opponent">{{ gameData.player2 }}</span>
+            <span class="tic-tac-toe__player_symbol-0">O</span>
+            <span class="tic-tac-toe__player_score">{{ gameData.scorePlayer2 ?? 0 }}</span>
+          </div>
+        </div>
+
+        <p class="tic-tac-toe__status" v-if="!gameData.winner && !isDraw">
+          <span class="tic-tac-toe__status_move">{{ translations[language].move }}:</span>
+          <span class="tic-tac-toe__status_name">{{ gameData.currentPlayer }}</span>
+        </p>
+
+        <p class="tic-tac-toe__status" v-if="gameData.winner">
+          🏆 <span class="tic-tac-toe__status_win">{{ translations[language].win }}:</span>
+          <span class="tic-tac-toe__status_winner">{{ gameData.winner }}</span>
+        </p>
+
+        <p class="tic-tac-toe__status" v-if="isDraw">
+          🤝 <span class="tic-tac-toe__status_draw">{{ translations[language].draw }}</span>
+        </p>
+
+        <div>
+          <button class="tic-tac-toe__reset-btn" @click="resetGame">
+            {{ translations[language].newGame }}
+          </button>
+        </div>
+
+        <div class="tic-tac-toe__board" :class="{ disabled: gameFinished && blockBoard }">
+          <div
+            v-for="(cell, index) in gameData.board"
+            :key="index"
+            class="tic-tac-toe__board_cell"
+            :class="[cellClass(cell), gameData.winLine?.includes(index) ? 'win' : '']"
+            @click="makeMove(index)"
+          >
+            {{ cell }}
+          </div>
+        </div>
+
+        <div>
+          <button class="tic-tac-toe__exit-btn" @click="exitGame">
+            {{ translations[language].goOut }}
+          </button>
+        </div>
+      </div>
+
+      <div v-else>{{ translations[language].loading }}...</div>
+    </div>
+  </div>
+</template>
+
+<style lang="scss" scoped>
 .tic-tac-toe {
-  padding: 20px;
-  font-family: sans-serif;
-}
+  @include adaptive-value(padding-top, 50, 20);
+  padding-bottom: rem(50);
+  &__title {
+    text-align: center;
+    @include adaptive-value(font-size, 40, 20);
+    @include adaptive-value(margin-top, 40, 20);
+    @include adaptive-value(margin-bottom, 30, 10);
+    color: green;
+  }
+  &__wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    & > *:not(:last-child) {
+      @include adaptive-value(margin-bottom, 20, 10);
+    }
+  }
+  &__players {
+    & > *:not(:last-child) {
+      margin-bottom: rem(10);
+    }
+    font-size: rem(20);
+  }
+  &__player {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: rem(200);
+    &_my-name {
+      width: rem(120);
+      color: red;
+    }
+    &_symbol-x {
+      color: red;
+    }
+    &_score {
+      color: rgb(83, 83, 83);
+    }
+    &_opponent {
+      width: rem(120);
+      color: dodgerblue;
+    }
+    &_symbol-0 {
+      color: dodgerblue;
+    }
+  }
+  &__status {
+    &_move {
+      color: rgb(83, 83, 83);
+      margin-right: rem(10);
+    }
+    &_name {
+      color: green;
+    }
+    &_win {
+      font-size: rem(20);
+      margin-right: rem(10);
+    }
+    &_winner {
+      font-size: rem(20);
+      color: #2b702e;
+    }
+    &_draw {
+      font-size: rem(20);
+      color: #2b702e;
+    }
+  }
+  &__reset-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: rem(49);
+    font-size: rem(20);
+    background-color: #4caf50;
+    border-radius: rem(12);
+    font-style: italic;
+    color: #fff;
+    @include adaptive-value(width, 250, 200);
 
-.players {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 10px;
-}
+    &:not(:disabled):hover {
+      background-color: #45a049;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.25);
+    }
 
-.player {
-  background: #eee;
-  padding: 6px 10px;
-  border-radius: 6px;
-}
+    &:not(:disabled):active {
+      background-color: #3e8e41;
+      transform: translateY(0);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
 
-.player.active {
-  background: #dff0d8;
-  font-weight: bold;
-}
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+  &__exit-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: rem(49);
+    font-size: rem(20);
+    background-color: red;
+    border-radius: rem(12);
+    font-style: italic;
+    color: #fff;
+    @include adaptive-value(width, 250, 200);
 
-.symbol {
-  margin-left: 6px;
-  font-weight: bold;
-}
+    &:not(:disabled):hover {
+      background-color: rgb(218, 3, 3);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.25);
+    }
 
-.symbol.x,
-.cell.x {
-  color: red;
-}
+    &:not(:disabled):active {
+      background-color: rgb(247, 14, 14);
+      transform: translateY(0);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
 
-.symbol.o,
-.cell.o {
-  color: dodgerblue;
-}
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+  &__board {
+    max-width: rem(290);
+    display: flex;
+    flex-wrap: wrap;
+    gap: rem(10);
+    &_cell {
+      width: rem(90);
+      height: rem(90);
+      border: 1px solid #333;
+      border-radius: rem(4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      cursor: pointer;
+      background: #f5f5f5;
 
-.status {
-  margin: 10px 0;
-  font-size: 16px;
+      &:hover {
+        scale: 1.05;
+        border: 1px solid green;
+      }
+    }
+  }
 }
-
-.board {
-  display: grid;
-  grid-template-columns: repeat(3, 70px);
-  gap: 6px;
-  margin: 10px 0;
-}
-
-.board.disabled {
+.tic-tac-toe__board.disabled {
   pointer-events: none;
   opacity: 0.7;
 }
 
-.cell {
-  width: 70px;
-  height: 70px;
-  border: 1px solid #333;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  cursor: pointer;
-  background: #f5f5f5;
-}
-
-.cell.win {
+.tic-tac-toe__board_cell.win {
   animation: blink 0.8s infinite alternate;
   font-weight: bold;
+}
+
+.tic-tac-toe__board_cell.x {
+  font-size: rem(46);
+  color: red;
+}
+
+.tic-tac-toe__board_cell.o {
+  font-size: rem(46);
+  color: blue;
 }
 
 @keyframes blink {
@@ -275,18 +390,5 @@ const cellClass = (cell) => {
   to {
     background: #ffd700;
   }
-}
-
-.buttons {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.reset,
-.exit,
-.back {
-  padding: 6px 12px;
-  cursor: pointer;
 }
 </style>
