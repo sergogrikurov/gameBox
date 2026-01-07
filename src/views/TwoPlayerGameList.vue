@@ -59,6 +59,7 @@ function goToRoom(gameKey) {
 <style scoped lang="scss">
 .player {
   @include adaptive-value(padding-top, 50, 20);
+  padding-bottom: rem(50);
   &__wrapper {
     display: flex;
     flex-direction: column;

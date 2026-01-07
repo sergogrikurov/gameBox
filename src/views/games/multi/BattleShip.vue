@@ -3,6 +3,10 @@ import { ref, onMounted, onUnmounted, computed } from "vue";
 import { db } from "@/firebase/firebase.js";
 import { doc, getDoc, updateDoc, onSnapshot, deleteDoc } from "firebase/firestore";
 import { useRoute, useRouter } from "vue-router";
+import { translations } from "@/composables/locales.js";
+import { useLanguage } from "@/composables/useLanguage";
+
+const { language } = useLanguage();
 
 /* ================== ЗВУКИ ================== */
 const hitSound = new Audio("/sounds/hit.mp3");
@@ -260,171 +264,266 @@ const exitGame = async () => {
 </script>
 
 <template>
-  <div class="battleship-container">
-    <!-- Кнопки назад/выйти -->
-    <div class="top-buttons">
-      <button class="back" @click="exitGame">Назад</button>
-      <button class="exit" @click="exitGame">Выйти</button>
-    </div>
+  <div class="battleShip">
+    <div class="battleShip-container">
+      <div class="battleShip__tittle">BattleShip</div>
+      <div class="battleShip__wrapper">
+        <button class="battleShip__new-game-btn" @click="startGame">
+          {{ translations[language].newGame }}
+        </button>
 
-    <!-- Кнопка начать новую игру -->
-    <button class="new-game-btn" @click="startGame">Начать новую игру</button>
-
-    <!-- Счёт -->
-    <div class="scoreboard">
-      <div>{{ gameData?.player1 }} — {{ gameData?.scorePlayer1 ?? 0 }}</div>
-      <div>{{ gameData?.player2 }} — {{ gameData?.scorePlayer2 ?? 0 }}</div>
-    </div>
-
-    <!-- Победитель / текущий ход -->
-    <h2 v-if="winner">🏆 Победил {{ winner }}</h2>
-    <h4 v-else>
-      {{ currentTurnName === myLocalName ? "Твой ход" : "Ход противника" }}
-    </h4>
-
-    <!-- Поля -->
-    <div class="boards">
-      <!-- МОЁ ПОЛЕ -->
-      <div class="board">
-        <div class="top-labels">
-          <div class="corner"></div>
-          <div v-for="l in letters" :key="'label-top-' + l" class="label">{{ l }}</div>
+        <!-- Счёт -->
+        <div class="battleShip__scoreboard">
+          <div class="battleShip__scoreboard_my-name">
+            <p>{{ gameData?.player1 }}</p>
+            <span>{{ gameData?.scorePlayer1 ?? 0 }}</span>
+          </div>
+          <div class="battleShip__scoreboard_opponent-name">
+            <p>{{ gameData?.player2 }}</p>
+            <span>{{ gameData?.scorePlayer2 ?? 0 }}</span>
+          </div>
         </div>
 
-        <div v-for="r in numbers" :key="'row-' + r" class="row">
-          <div class="left-label">{{ r }}</div>
-          <div
-            v-for="c in 10"
-            :key="'cell-' + r + '-' + c"
-            class="cell"
-            :class="{
-              ship: playerGrid[(r - 1) * 10 + (c - 1)]?.ship,
-              hit: playerGrid[(r - 1) * 10 + (c - 1)]?.hit,
-              miss: playerGrid[(r - 1) * 10 + (c - 1)]?.miss,
-            }"
-          ></div>
-        </div>
-      </div>
+        <!-- Победитель / текущий ход -->
+        <h2 class="battleShip__win" v-if="winner">
+          🏆 {{ translations[language].win }} {{ winner }}
+        </h2>
+        <h4 class="battleShip__move" v-else>
+          {{
+            currentTurnName === myLocalName
+              ? translations[language].yourTurn
+              : translations[language].enemyTurn
+          }}
+        </h4>
 
-      <!-- ПОЛЕ ПРОТИВНИКА -->
-      <div class="board">
-        <div class="top-labels">
-          <div class="corner"></div>
-          <div v-for="l in letters" :key="'op-label-' + l" class="label">{{ l }}</div>
+        <!-- Поля -->
+        <div class="battleShip__boards">
+          <!-- МОЁ ПОЛЕ -->
+          <div class="battleShip__board">
+            <div class="battleShip__board_top-labels">
+              <div class="battleShip__board_corner"></div>
+              <div v-for="l in letters" :key="'label-top-' + l" class="battleShip__board_label">
+                {{ l }}
+              </div>
+            </div>
+
+            <div v-for="r in numbers" :key="'row-' + r" class="battleShip__board_row">
+              <div class="battleShip__board_left-label">{{ r }}</div>
+              <div
+                v-for="c in 10"
+                :key="'cell-' + r + '-' + c"
+                class="battleShip__board_cell"
+                :class="{
+                  ship: playerGrid[(r - 1) * 10 + (c - 1)]?.ship,
+                  hit: playerGrid[(r - 1) * 10 + (c - 1)]?.hit,
+                  miss: playerGrid[(r - 1) * 10 + (c - 1)]?.miss,
+                }"
+              ></div>
+            </div>
+          </div>
+
+          <!-- ПОЛЕ ПРОТИВНИКА -->
+          <div class="battleShip__board">
+            <div class="battleShip__board_top-labels">
+              <div class="battleShip__board_corner"></div>
+              <div v-for="l in letters" :key="'op-label-' + l" class="battleShip__board_label">
+                {{ l }}
+              </div>
+            </div>
+
+            <div v-for="r in numbers" :key="'op-row-' + r" class="battleShip__board_row">
+              <div class="battleShip__board_left-label">{{ r }}</div>
+              <div
+                v-for="c in 10"
+                :key="'op-cell-' + r + '-' + c"
+                class="battleShip__board_cell"
+                :class="{
+                  hit: opponentGrid[(r - 1) * 10 + (c - 1)]?.hit,
+                  miss: opponentGrid[(r - 1) * 10 + (c - 1)]?.miss,
+                }"
+                @click="!winner && currentTurnName === myLocalName && shoot((r - 1) * 10 + (c - 1))"
+              ></div>
+            </div>
+          </div>
         </div>
 
-        <div v-for="r in numbers" :key="'op-row-' + r" class="row">
-          <div class="left-label">{{ r }}</div>
-          <div
-            v-for="c in 10"
-            :key="'op-cell-' + r + '-' + c"
-            class="cell"
-            :class="{
-              hit: opponentGrid[(r - 1) * 10 + (c - 1)]?.hit,
-              miss: opponentGrid[(r - 1) * 10 + (c - 1)]?.miss,
-            }"
-            @click="!winner && currentTurnName === myLocalName && shoot((r - 1) * 10 + (c - 1))"
-          ></div>
+        <div>
+          <button class="battleShip__exit-btn" @click="exitGame">Выйти</button>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<style scoped>
-.battleship-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 15px;
-  font-family: sans-serif;
+<style lang="scss" scoped>
+.battleShip {
+  @include adaptive-value(padding-top, 50, 20);
+  padding-bottom: rem(50);
+  &__tittle {
+    text-align: center;
+    @include adaptive-value(font-size, 40, 20);
+    color: green;
+  }
+  &__wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  &__new-game-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: rem(49);
+    font-size: rem(20);
+    background-color: #4caf50;
+    border-radius: rem(12);
+    font-style: italic;
+    color: #fff;
+    @include adaptive-value(width, 250, 200);
+    @include adaptive-value(margin-top, 20, 10);
+
+    &:not(:disabled):hover {
+      background-color: #45a049;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    &:not(:disabled):active {
+      background-color: #3e8e41;
+      transform: translateY(0);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+  &__scoreboard {
+    font-size: rem(20);
+    width: rem(150);
+    margin: rem(20) rem(0);
+    &_my-name {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: rem(10);
+      & p {
+        color: blue;
+      }
+      & span {
+        color: rgb(92, 89, 89);
+      }
+    }
+    &_opponent-name {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      & p {
+        color: red;
+      }
+      & span {
+        color: rgb(92, 89, 89);
+      }
+    }
+  }
+  &__move {
+    font-size: rem(20);
+    color: #45a049;
+    margin-bottom: rem(20);
+  }
+  &__win {
+    font-size: rem(20);
+    color: #45a049;
+    margin-bottom: rem(20);
+  }
+  &__boards {
+    display: flex;
+    align-items: center;
+    gap: rem(20);
+    @media (max-width: rem(640)) {
+      flex-direction: column;
+    }
+  }
+  &__board {
+    display: flex;
+    flex-direction: column;
+    &_top-labels {
+      display: flex;
+      align-items: center;
+    }
+    &_row {
+      display: flex;
+    }
+
+    &_corner {
+      width: rem(26);
+      height: rem(26);
+    }
+    &_label {
+      width: rem(26);
+      height: rem(26);
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    &_left-label {
+      width: rem(26);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+    }
+    &_cell {
+      width: rem(26);
+      height: rem(26);
+      border: 1px solid #999;
+      background-color: #cce5ff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  }
+  &__exit-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: rem(49);
+    font-size: rem(20);
+    background-color: red;
+    border-radius: rem(12);
+    font-style: italic;
+    color: #fff;
+    @include adaptive-value(width, 250, 200);
+    margin-top: rem(20);
+
+    &:not(:disabled):hover {
+      background-color: rgb(218, 3, 3);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    &:not(:disabled):active {
+      background-color: rgb(247, 14, 14);
+      transform: translateY(0);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
 }
 
-.top-buttons {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
+.ship {
+  background-color: #007bff;
 }
-
-.back,
-.exit {
-  padding: 6px 12px;
-  cursor: pointer;
-}
-
-.new-game-btn {
-  padding: 6px 12px;
-  cursor: pointer;
-  margin-bottom: 10px;
-}
-
-.scoreboard {
-  display: flex;
-  gap: 40px;
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-
-.boards {
-  display: flex;
-  gap: 20px; /* расстояние между полями */
-  justify-content: center;
-}
-
-.board {
-  display: flex;
-  flex-direction: column;
-}
-
-.row {
-  display: flex; /* клетки в ряду горизонтально */
-}
-
-.top-labels {
-  display: flex;
-}
-
-.corner {
-  width: 30px;
-  height: 30px;
-}
-
-.label {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-weight: bold;
-}
-
-.left-label {
-  width: 30px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-weight: bold;
-}
-
-.cell {
-  width: 30px;
-  height: 30px;
-  border: 1px solid #999;
-  background-color: #cce5ff;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.cell.ship {
-  background-color: #007bff; /* своё поле показывает корабли */
-}
-
-.cell.hit {
+.hit {
   background-color: red;
 }
-
-.cell.miss::after {
+.miss::after {
   content: "✕";
   color: black;
   font-weight: bold;

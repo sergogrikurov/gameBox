@@ -14,11 +14,11 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { useRoute, useRouter } from "vue-router";
-import { translations } from "@/composables/locales.js";
-import { useLanguage } from "@/composables/useLanguage";
+//import { translations } from "@/composables/locales.js";
+//import { useLanguage } from "@/composables/useLanguage";
 import MyButton from "@/components/MyButton.vue";
 
-const { language } = useLanguage();
+//const { language } = useLanguage();
 
 // ---------- REF для имени и модалки ----------
 const playerName = ref(localStorage.getItem("playerName") || "");
@@ -225,23 +225,17 @@ const copyInviteLink = () => {
       <div class="room__wrapper">
         <div class="room__modal" v-if="showNameModal">
           <input class="room__modal_input" v-model="nameInput" placeholder="Name" />
-          <button class="room__modal_btn" @click="submitName">
-            {{ translations[language].saveName || "Save" }}
-          </button>
+          <button class="room__modal_btn" @click="submitName">Save</button>
         </div>
 
         <div class="room__text-list-wrapper" v-else>
           <div class="room__text-list">
-            <p class="room__text-list_player-one">
-              {{ translations[language].player || "Player" }} 1: {{ roomData.player1 || "-" }}
-            </p>
+            <p class="room__text-list_player-one">Player 1: {{ roomData.player1 || "-" }}</p>
             <p class="room__text-list_player-two">
-              {{ translations[language].player || "Player" }} 2:
+              Player 2:
               {{ roomData.player2 || "waiting" }}
             </p>
-            <p class="room__text-list_room-status">
-              {{ translations[language].status || "Status" }}: {{ roomData.status }}
-            </p>
+            <p class="room__text-list_room-status">Status: {{ roomData.status }}</p>
           </div>
 
           <div class="room__link" v-if="roomData.status !== 'ready'">
@@ -256,7 +250,7 @@ const copyInviteLink = () => {
             @click="startGame"
             :disabled="!roomData.player1 || !roomData.player2"
           >
-            {{ translations[language].play || "Play" }}
+            Play
           </button>
         </div>
       </div>

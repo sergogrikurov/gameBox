@@ -31,6 +31,8 @@ export const translations = {
     move: "Ход",
     goOut: "Выйти",
     loading: "Загрузка",
+    yourTurn: "Твой ход",
+    enemyTurn: "Ход противника",
   },
   ka: {
     chooseLanguage: "აირჩიე ენა",
@@ -64,5 +66,7 @@ export const translations = {
     move: "სვლა",
     goOut: "გასვლა",
     loading: "ჩატვირთვა",
+    yourTurn: "შენი სვლაა",
+    enemyTurn: "მეტოქეს სვლაა",
   },
 };
