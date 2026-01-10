@@ -91,8 +91,8 @@ onMounted(() => {
     display: grid;
     place-items: center;
     border: 2px solid #fff;
-    width: rem(150);
-    height: rem(50);
+    width: rem(180);
+    height: rem(60);
     border-radius: rem(6);
     cursor: pointer;
     font-size: rem(24);
