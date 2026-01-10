@@ -1,11 +1,13 @@
 <script setup>
+/* ================== IMPORTS ================== */
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { db } from "@/firebase/firebase.js";
-import { doc, getDoc, updateDoc, onSnapshot, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
 import { useRoute, useRouter } from "vue-router";
 import { translations } from "@/composables/locales.js";
 import { useLanguage } from "@/composables/useLanguage";
 
+/* ================== LANGUAGE ================== */
 const { language } = useLanguage();
 
 /* ================== ЗВУКИ ================== */
@@ -19,16 +21,16 @@ function play(sound) {
   sound.currentTime = 0;
   sound.play();
 }
-/* =========================================== */
 
+/* ================== ROUTER / DATA ================== */
 const route = useRoute();
 const router = useRouter();
 const gameId = route.params.roomId;
 
 const myLocalName = localStorage.getItem("playerName") || "Игрок";
-const gameData = ref(null);
 
-const isPlayer1 = computed(() => gameData.value?.player1 === myLocalName);
+/* ================== STATE ================== */
+const gameData = ref(null);
 
 const playerGrid = ref([]);
 const opponentGrid = ref([]);
@@ -37,43 +39,11 @@ const currentTurnName = ref("");
 const opponentName = ref("");
 const winner = ref("");
 
+/* ================== COMPUTED ================== */
+const isPlayer1 = computed(() => gameData.value?.player1 === myLocalName);
+
 const letters = "ABCDEFGHIJ".split("");
 const numbers = Array.from({ length: 10 }, (_, i) => i + 1);
-
-/* ================== ПОДПИСКА ================== */
-let unsubscribe = null;
-
-onMounted(() => {
-  const gameRef = doc(db, "games", gameId);
-  unsubscribe = onSnapshot(gameRef, (snap) => {
-    if (!snap.exists()) {
-      router.push({ name: "twoPlayerGameList" });
-      return;
-    }
-
-    const d = snap.data();
-    gameData.value = d;
-
-    playerGrid.value = isPlayer1.value ? d.player1Grid : d.player2Grid;
-    opponentGrid.value = isPlayer1.value ? d.player2Grid : d.player1Grid;
-
-    opponentName.value = isPlayer1.value ? d.player2 : d.player1;
-    currentTurnName.value = d.turn === "player1" ? d.player1 : d.player2;
-
-    /* ===== ЗВУК ПРИ ВЫСТРЕЛЕ СОПЕРНИКА ===== */
-    if (playerGrid.value.length && d.lastShot) {
-      const cell = playerGrid.value[d.lastShot.index];
-      if (cell?.hit) play(hitSound);
-      if (d.lastShot.sunk) play(sinkSound);
-    }
-
-    winner.value = d.winner || "";
-  });
-});
-
-onUnmounted(() => {
-  if (unsubscribe) unsubscribe();
-});
 
 /* ================== ГЕНЕРАЦИЯ КОРАБЛЕЙ ================== */
 function generateShips() {
@@ -88,13 +58,12 @@ function generateShips() {
       if (grid[p].ship) return false;
       const r = Math.floor(p / 10);
       const c = p % 10;
-      for (let dr = -1; dr <= 1; dr++) {
+      for (let dr = -1; dr <= 1; dr++)
         for (let dc = -1; dc <= 1; dc++) {
           const rr = r + dr;
           const cc = c + dc;
           if (rr >= 0 && rr < 10 && cc >= 0 && cc < 10 && grid[rr * 10 + cc].ship) return false;
         }
-      }
       return true;
     });
   }
@@ -102,14 +71,14 @@ function generateShips() {
   ships.forEach((size) => {
     let placed = false;
     while (!placed) {
-      const h = Math.random() < 0.5;
+      const horizontal = Math.random() < 0.5;
       const r = Math.floor(Math.random() * 10);
       const c = Math.floor(Math.random() * 10);
       const pos = [];
 
       for (let i = 0; i < size; i++) {
-        const rr = h ? r : r + i;
-        const cc = h ? c + i : c;
+        const rr = horizontal ? r : r + i;
+        const cc = horizontal ? c + i : c;
         if (rr >= 10 || cc >= 10) break;
         pos.push(rr * 10 + cc);
       }
@@ -128,9 +97,11 @@ function generateShips() {
 function inside(r, c) {
   return r >= 0 && r < 10 && c >= 0 && c < 10;
 }
+
 function idx(r, c) {
   return r * 10 + c;
 }
+
 function getShip(grid, start) {
   const stack = [start];
   const visited = new Set();
@@ -164,8 +135,7 @@ function markAround(grid, ship) {
   ship.forEach((i) => {
     const r = Math.floor(i / 10);
     const c = i % 10;
-
-    for (let dr = -1; dr <= 1; dr++) {
+    for (let dr = -1; dr <= 1; dr++)
       for (let dc = -1; dc <= 1; dc++) {
         const rr = r + dr;
         const cc = c + dc;
@@ -173,7 +143,6 @@ function markAround(grid, ship) {
         const id = idx(rr, cc);
         if (!grid[id].ship && !grid[id].hit) grid[id].miss = true;
       }
-    }
   });
 }
 
@@ -197,6 +166,7 @@ async function shoot(index) {
 
   const grid = JSON.parse(JSON.stringify(data[enemyKey]));
   const cell = grid[index];
+
   if (cell.hit || cell.miss) return;
 
   let nextTurn = data.turn;
@@ -240,26 +210,68 @@ async function startGame() {
     turn: Math.random() < 0.5 ? "player1" : "player2",
     winner: "",
     lastShot: null,
+    leftPlayers: {},
   });
 }
 
-/* ================== ВЫХОД ================== */
-const exitGame = async () => {
-  if (unsubscribe) unsubscribe();
+/* ================== ПОДПИСКА ================== */
+let unsubscribe = null;
 
-  if (!gameData.value) {
-    router.push({ name: "twoPlayerGameList" });
-    return;
-  }
+onMounted(() => {
+  const gameRef = doc(db, "games", gameId);
+
+  unsubscribe = onSnapshot(gameRef, (snap) => {
+    if (!snap.exists()) {
+      router.replace("/");
+      return;
+    }
+
+    const d = snap.data();
+    gameData.value = d;
+
+    playerGrid.value = isPlayer1.value ? d.player1Grid : d.player2Grid;
+    opponentGrid.value = isPlayer1.value ? d.player2Grid : d.player1Grid;
+    opponentName.value = isPlayer1.value ? d.player2 : d.player1;
+    currentTurnName.value = d.turn === "player1" ? d.player1 : d.player2;
+
+    winner.value = d.winner || "";
+
+    if (isPlayer1.value && d.leftPlayers?.[d.player2]) router.replace("/");
+    if (!isPlayer1.value && d.leftPlayers?.[d.player1]) router.replace("/");
+  });
+
+  window.addEventListener("beforeunload", handleBeforeUnload);
+});
+
+onUnmounted(() => {
+  if (unsubscribe) unsubscribe();
+  window.removeEventListener("beforeunload", handleBeforeUnload);
+});
+
+/* ================== ВЫХОД ИЗ ИГРЫ ================== */
+const handlePlayerLeft = async () => {
+  if (!gameData.value) return;
 
   try {
-    await deleteDoc(doc(db, "games", gameId));
-    await deleteDoc(doc(db, "rooms", gameData.value.roomId));
+    await updateDoc(doc(db, "games", gameId), {
+      [`leftPlayers.${myLocalName}`]: true,
+      lastActive: new Date(),
+    });
   } catch (e) {
-    console.error(e);
+    console.error("Failed to mark player left:", e);
   }
+};
 
-  router.push({ name: "twoPlayerGameList" });
+const handleBeforeUnload = (event) => {
+  handlePlayerLeft();
+  event.preventDefault();
+  event.returnValue = "";
+};
+
+const exitGame = async () => {
+  if (unsubscribe) unsubscribe();
+  await handlePlayerLeft();
+  router.push("/");
 };
 </script>
 
@@ -348,7 +360,9 @@ const exitGame = async () => {
         </div>
 
         <div>
-          <button class="battleShip__exit-btn" @click="exitGame">Выйти</button>
+          <button class="battleShip__exit-btn" @click="exitGame">
+            {{ translations[language].goOut }}
+          </button>
         </div>
       </div>
     </div>

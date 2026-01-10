@@ -4,6 +4,9 @@ import { translations } from "@/composables/locales.js";
 import { useLanguage } from "@/composables/useLanguage";
 import MyButton from "@/components/MyButton.vue";
 
+import { collection, getDocs, deleteDoc } from "firebase/firestore";
+import { db } from "@/firebase/firebase.js";
+
 const { language } = useLanguage();
 
 // ограничения имени
@@ -12,6 +15,8 @@ const MAX_LENGTH = 12;
 
 // имя игрока
 const name = ref("");
+
+const isAdmin = computed(() => name.value === "adminsergo");
 
 // очистка и защита ввода
 const sanitizeName = (value) => {
@@ -51,6 +56,32 @@ watch(name, (newName) => {
 const showHint = computed(() => {
   return name.value.length < MIN_LENGTH;
 });
+
+const clearDatabase = async () => {
+  if (!isAdmin.value) return;
+
+  const ok = confirm("DELETE ALL games and rooms?");
+  if (!ok) return;
+
+  try {
+    // games
+    const gamesSnap = await getDocs(collection(db, "games"));
+    for (const docSnap of gamesSnap.docs) {
+      await deleteDoc(docSnap.ref);
+    }
+
+    // rooms
+    const roomsSnap = await getDocs(collection(db, "rooms"));
+    for (const docSnap of roomsSnap.docs) {
+      await deleteDoc(docSnap.ref);
+    }
+
+    alert("Database cleared ✅");
+  } catch (e) {
+    console.error(e);
+    alert("Error while clearing DB ❌");
+  }
+};
 </script>
 
 <template>
@@ -61,6 +92,11 @@ const showHint = computed(() => {
         <h2 class="enter-name__title">
           {{ translations[language].enterName }}
         </h2>
+
+        <button v-if="isAdmin" class="enter-name__btn-admin" @click="clearDatabase">
+          удалить базу
+        </button>
+
         <input
           v-model.trim="name"
           class="enter-name__input"
@@ -157,6 +193,37 @@ const showHint = computed(() => {
 
     &:not(:disabled):active {
       background-color: #3e8e41;
+      transform: translateY(0);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+  &__btn-admin {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: rem(49);
+    font-size: rem(20);
+    background-color: red;
+    border-radius: rem(12);
+    font-style: italic;
+    color: #fff;
+    @include adaptive-value(width, 250, 200);
+    margin-bottom: rem(20);
+    text-transform: uppercase;
+
+    &:not(:disabled):hover {
+      background-color: rgb(218, 3, 3);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    &:not(:disabled):active {
+      background-color: rgb(247, 14, 14);
       transform: translateY(0);
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }

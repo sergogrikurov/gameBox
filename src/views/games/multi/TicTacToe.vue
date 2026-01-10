@@ -1,46 +1,28 @@
 <script setup>
+/* ================== IMPORTS ================== */
 import { ref, onMounted, computed, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { db } from "@/firebase/firebase.js";
-import { doc, getDoc, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { translations } from "@/composables/locales.js";
 import { useLanguage } from "@/composables/useLanguage.js";
 
+/* ================== LANGUAGE ================== */
 const { language } = useLanguage();
 
+/* ================== ROUTER / IDS ================== */
 const route = useRoute();
 const router = useRouter();
 const gameId = route.params.roomId;
 
+/* ================== STATE ================== */
 const gameData = ref(null);
 const myName = localStorage.getItem("playerName");
 
-let unsubscribe = null;
-
-// Блокировка доски после окончания игры (можно отключить)
+// блокировка доски после окончания
 const blockBoard = true;
 
-onMounted(async () => {
-  const gameRef = doc(db, "games", gameId);
-
-  // Получаем начальные данные
-  const snap = await getDoc(gameRef);
-  if (snap.exists()) gameData.value = snap.data();
-
-  // Подписка на изменения документа
-  unsubscribe = onSnapshot(gameRef, (snap) => {
-    if (!snap.exists()) {
-      router.push({ name: "twoPlayerGameList" });
-      return;
-    }
-    gameData.value = snap.data();
-  });
-});
-
-onUnmounted(() => {
-  if (unsubscribe) unsubscribe();
-});
-
+/* ================== COMPUTED ================== */
 const isDraw = computed(() => {
   if (!gameData.value) return false;
   return !gameData.value.winner && gameData.value.board.every((c) => c !== "");
@@ -50,7 +32,28 @@ const gameFinished = computed(() => {
   return gameData.value?.winner || isDraw.value;
 });
 
-// Ход игрока
+/* ================== ПРОВЕРКА ПОБЕДЫ ================== */
+const checkWinner = (b) => {
+  const lines = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6],
+  ];
+
+  for (const [a, c, d] of lines) {
+    if (b[a] && b[a] === b[c] && b[a] === b[d]) {
+      return { symbol: b[a], line: [a, c, d] };
+    }
+  }
+  return null;
+};
+
+/* ================== ХОД ИГРОКА ================== */
 const makeMove = async (index) => {
   if (!gameData.value) return;
   if (gameFinished.value && blockBoard) return;
@@ -69,6 +72,7 @@ const makeMove = async (index) => {
 
   if (winnerResult) {
     winnerName = winnerResult.symbol === "X" ? gameData.value.player1 : gameData.value.player2;
+
     winLine = winnerResult.line;
 
     if (winnerResult.symbol === "X") {
@@ -91,9 +95,10 @@ const makeMove = async (index) => {
   });
 };
 
-// Сброс игры
+/* ================== СБРОС ИГРЫ ================== */
 const resetGame = async () => {
   if (!gameData.value) return;
+
   await updateDoc(doc(db, "games", gameId), {
     board: Array(9).fill(""),
     winner: null,
@@ -103,43 +108,71 @@ const resetGame = async () => {
   });
 };
 
-// Выйти/назад
-const exitGame = async () => {
-  if (!gameData.value) return;
-
-  const gameRef = doc(db, "games", gameId);
-  const roomRef = doc(db, "rooms", gameData.value.roomId);
-
-  await deleteDoc(gameRef);
-  await deleteDoc(roomRef);
-
-  router.push({ name: "twoPlayerGameList" });
-};
-
-// Проверка победной линии
-const checkWinner = (b) => {
-  const lines = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6],
-  ];
-  for (const [a, c, d] of lines) {
-    if (b[a] && b[a] === b[c] && b[a] === b[d]) {
-      return { symbol: b[a], line: [a, c, d] };
-    }
-  }
-  return null;
-};
-
+/* ================== ВСПОМОГАТЕЛЬНЫЕ ================== */
 const cellClass = (cell) => {
   if (cell === "X") return "x";
   if (cell === "O") return "o";
   return "";
+};
+
+/* ================== ПОДПИСКА ================== */
+let unsubscribe = null;
+
+onMounted(async () => {
+  const gameRef = doc(db, "games", gameId);
+
+  unsubscribe = onSnapshot(gameRef, (snap) => {
+    if (!snap.exists()) {
+      router.replace("/");
+      return;
+    }
+
+    const d = snap.data();
+    gameData.value = d;
+
+    // 🔴 если второй игрок вышел — редирект
+    if (myName === d.player1 && d.leftPlayers?.[d.player2]) {
+      router.replace("/");
+    }
+
+    if (myName === d.player2 && d.leftPlayers?.[d.player1]) {
+      router.replace("/");
+    }
+  });
+
+  window.addEventListener("beforeunload", handleBeforeUnload);
+});
+
+onUnmounted(() => {
+  if (unsubscribe) unsubscribe();
+  window.removeEventListener("beforeunload", handleBeforeUnload);
+});
+
+/* ================== ВЫХОД ИЗ ИГРЫ ================== */
+
+const handlePlayerLeft = async () => {
+  if (!gameData.value) return;
+
+  try {
+    await updateDoc(doc(db, "games", gameId), {
+      [`leftPlayers.${myName}`]: true,
+      lastActive: new Date(),
+    });
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const handleBeforeUnload = (event) => {
+  handlePlayerLeft();
+  event.preventDefault();
+  event.returnValue = "";
+};
+
+const exitGame = async () => {
+  if (unsubscribe) unsubscribe();
+  await handlePlayerLeft();
+  router.push("/");
 };
 </script>
 

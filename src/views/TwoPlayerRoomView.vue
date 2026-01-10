@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import { db } from "@/firebase/firebase.js";
 import {
   addDoc,
@@ -12,13 +12,9 @@ import {
   query,
   where,
   getDocs,
+  deleteDoc,
 } from "firebase/firestore";
 import { useRoute, useRouter } from "vue-router";
-//import { translations } from "@/composables/locales.js";
-//import { useLanguage } from "@/composables/useLanguage";
-import MyButton from "@/components/MyButton.vue";
-
-//const { language } = useLanguage();
 
 // ---------- REF для имени и модалки ----------
 const playerName = ref(localStorage.getItem("playerName") || "");
@@ -60,7 +56,9 @@ const roomData = ref({
   player1: "",
   player2: "",
   status: "waiting",
+  inviteUsed: false,
 });
+const roomLoaded = ref(false); // для корректного отображения кнопки Invite
 
 // ---------- Инициализация комнаты ----------
 const roomIdFromUrl = route.query.roomId || null;
@@ -75,7 +73,8 @@ const initRoom = async () => {
       player1: playerName.value,
       player2: null,
       status: "waiting",
-      language: localStorage.getItem("language") || "ru", // сохраняем язык создателя
+      inviteUsed: false,
+      language: localStorage.getItem("language") || "ru",
       createdAt: serverTimestamp(),
     });
     roomId.value = docRef.id;
@@ -90,8 +89,13 @@ const initRoom = async () => {
   if (roomIdFromUrl) {
     roomId.value = roomIdFromUrl;
     const roomRef = doc(db, "rooms", roomIdFromUrl);
+
+    // РАННЯЯ проверка: если комнаты нет, сразу редиректим
     const roomSnap = await getDoc(roomRef);
-    if (!roomSnap.exists()) return;
+    if (!roomSnap.exists()) {
+      router.replace("/"); // или на главную
+      return;
+    }
 
     const data = roomSnap.data();
 
@@ -102,7 +106,6 @@ const initRoom = async () => {
       });
     }
 
-    // ---------- Синхронизация языка ----------
     if (!localStorage.getItem("language")) {
       localStorage.setItem("language", data.language || "ru");
     }
@@ -112,14 +115,23 @@ const initRoom = async () => {
   if (roomId.value) {
     const roomRef = doc(db, "rooms", roomId.value);
     onSnapshot(roomRef, (docSnap) => {
-      if (!docSnap.exists()) return;
+      // Если комнату удалили после того, как игрок зашёл
+      if (!docSnap.exists()) {
+        router.replace("/");
+        return;
+      }
+
       const data = docSnap.data();
+
       roomData.value = {
-        player1: data.player1,
+        player1: data.player1 || (playerName.value === data.player1 ? playerName.value : "-"),
         player2: data.player2 || "",
-        status: data.status,
+        status: data.player2 ? data.status : "waiting",
+        inviteUsed: data.inviteUsed || false,
       };
+
       inviteLink.value = `${window.location.origin}/two-player-room/${gameKey}?roomId=${roomId.value}`;
+      roomLoaded.value = true;
     });
   }
 };
@@ -130,28 +142,31 @@ const startGame = async () => {
 
   const roomRef = doc(db, "rooms", roomId.value);
   const roomSnap = await getDoc(roomRef);
-  if (!roomSnap.exists()) return;
+
+  if (!roomSnap.exists()) {
+    // Комната уже удалена → просто выходим
+    return;
+  }
 
   const data = roomSnap.data();
 
-  // Проверка, что оба игрока есть
   if (!data.player1 || !data.player2) {
     alert("Ждём второго игрока");
     return;
   }
 
-  // Проверка, есть ли уже игра для этой комнаты
   const gamesRef = collection(db, "games");
   const q = query(gamesRef, where("roomId", "==", roomId.value));
   const qSnap = await getDocs(q);
 
   let gameDocId = "";
+
   if (!qSnap.empty) {
-    // Игра уже есть → берём её id
+    // Игра уже существует
     gameDocId = qSnap.docs[0].id;
   } else {
-    // Создаём новую игру морской бой
-    let gameData = {
+    // Создаём новую игру
+    const gameData = {
       roomId: roomId.value,
       game: gameKey,
       player1: data.player1,
@@ -159,10 +174,10 @@ const startGame = async () => {
       status: "ongoing",
       currentPlayer: data.player1,
       createdAt: serverTimestamp(),
+      lastActive: serverTimestamp(),
     };
 
     if (gameKey === "Battleship") {
-      // правильное создание полей для морского боя
       const emptyGrid = () =>
         Array(100)
           .fill(null)
@@ -176,10 +191,7 @@ const startGame = async () => {
       gameData.winner = null;
       gameData.scorePlayer1 = 0;
       gameData.scorePlayer2 = 0;
-    }
-
-    // Для TicTacToe оставляем как было
-    else if (gameKey === "TicTacToe") {
+    } else if (gameKey === "TicTacToe") {
       gameData.board = Array(9).fill("");
       gameData.winner = null;
     }
@@ -188,7 +200,7 @@ const startGame = async () => {
     gameDocId = gameDocRef.id;
   }
 
-  // Редирект на компонент игры
+  // Редирект в игру
   if (gameKey === "Battleship") {
     router.push({
       name: "twoPlayerBattleship",
@@ -205,22 +217,94 @@ const startGame = async () => {
 // ---------- Запуск при монтировании ----------
 onMounted(() => {
   if (playerName.value) initRoom();
+
+  // ---------- Удаление комнаты при закрытии вкладки ----------
+  window.addEventListener("beforeunload", handleBeforeUnload);
 });
 
+onBeforeUnmount(() => {
+  window.removeEventListener("beforeunload", handleBeforeUnload);
+});
+
+const handleBeforeUnload = async () => {
+  if (!roomId.value) return;
+
+  const roomRef = doc(db, "rooms", roomId.value);
+  const roomSnap = await getDoc(roomRef);
+  if (!roomSnap.exists()) return;
+
+  const data = roomSnap.data();
+
+  if (data.player1 === playerName.value) {
+    // создатель покинул вкладку → удаляем комнату
+    await deleteDoc(roomRef);
+  } else if (data.player2 === playerName.value) {
+    // второй игрок покинул вкладку → освобождаем слот
+    await updateDoc(roomRef, {
+      player2: null,
+      status: "waiting",
+      inviteUsed: false,
+    });
+  }
+};
+
 // ---------- Копировать ссылку ----------
-const copied = ref(false);
-const copyInviteLink = () => {
-  navigator.clipboard.writeText(inviteLink.value).then(() => {
-    copied.value = true;
-    setTimeout(() => (copied.value = false), 2000);
+const inviteFriend = async () => {
+  const text = `🎮 ${playerName.value} invites you to play ${gameKey}
+Click to join 👇
+${inviteLink.value}`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: `${gameKey} invitation`,
+        text,
+        url: inviteLink.value,
+      });
+    } catch {
+      console.log("Share cancelled");
+    }
+  } else {
+    await navigator.clipboard.writeText(text);
+  }
+
+  // Скрываем кнопку для всех
+  const roomRef = doc(db, "rooms", roomId.value);
+  await updateDoc(roomRef, {
+    inviteUsed: true,
   });
+};
+
+// ---------- Выход из комнаты ----------
+const exitRoom = async () => {
+  if (!roomId.value) return;
+
+  const roomRef = doc(db, "rooms", roomId.value);
+  const roomSnap = await getDoc(roomRef);
+  if (!roomSnap.exists()) return;
+
+  const data = roomSnap.data();
+
+  if (data.player1 === playerName.value) {
+    await deleteDoc(roomRef);
+    router.push("/two-player-game-list");
+    return;
+  }
+
+  if (data.player2 === playerName.value) {
+    await updateDoc(roomRef, {
+      player2: null,
+      status: "waiting",
+      inviteUsed: false,
+    });
+    router.push("/two-player-game-list");
+  }
 };
 </script>
 
 <template>
   <div class="room">
     <div class="room__container">
-      <my-button to="/two-player-game-list" />
       <h2 class="room__title">{{ gameKey }}</h2>
       <div class="room__wrapper">
         <div class="room__modal" v-if="showNameModal">
@@ -238,12 +322,13 @@ const copyInviteLink = () => {
             <p class="room__text-list_room-status">Status: {{ roomData.status }}</p>
           </div>
 
-          <div class="room__link" v-if="roomData.status !== 'ready'">
-            <input class="room__link_input" :value="inviteLink" readonly />
-            <button class="room__link_btn" @click="copyInviteLink">
-              {{ copied ? "Скопировано!" : "Скопировать ссылку" }}
-            </button>
-          </div>
+          <button
+            class="room__link_btn"
+            @click="inviteFriend"
+            v-if="roomLoaded && !roomData.inviteUsed"
+          >
+            Invite friend
+          </button>
 
           <button
             class="room__btn-start"
@@ -252,6 +337,9 @@ const copyInviteLink = () => {
           >
             Play
           </button>
+        </div>
+        <div>
+          <button class="room__exit-btn" @click="exitRoom">Выйти</button>
         </div>
       </div>
     </div>
@@ -412,6 +500,36 @@ const copyInviteLink = () => {
         opacity: 0.5;
         cursor: not-allowed;
       }
+    }
+  }
+  &__exit-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: rem(49);
+    font-size: rem(20);
+    background-color: red;
+    border-radius: rem(12);
+    font-style: italic;
+    color: #fff;
+    @include adaptive-value(width, 250, 200);
+    margin-top: rem(20);
+
+    &:not(:disabled):hover {
+      background-color: rgb(218, 3, 3);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    &:not(:disabled):active {
+      background-color: rgb(247, 14, 14);
+      transform: translateY(0);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
   }
 }
